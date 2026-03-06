@@ -49,7 +49,7 @@ export async function generateSlotsForDate(db: D1Database, date: string, psychol
   let generate = true;
   if (isHoliday) {
     const override = await db.prepare(
-      'SELECT id FROM holiday_overrides WHERE psychologist_id = ? AND date = ?'
+      'SELECT id FROM holiday_overrides WHERE psychologist_id = ? AND "date" = ?'
     ).bind(psychologistId, date).first();
     if (!override) {
       generate = false; // it is a holiday without override, do not generate
@@ -78,7 +78,7 @@ export async function generateSlotsForDate(db: D1Database, date: string, psychol
   const sessionDuration = psych?.session_duration_minutes || 45;
 
   const existingSlotsResult = await db.prepare(
-    'SELECT id, date, start_time, end_time, available FROM slots WHERE psychologist_id = ? AND date = ? ORDER BY start_time'
+    'SELECT id, "date", start_time, end_time, available FROM slots WHERE psychologist_id = ? AND "date" = ? ORDER BY start_time'
   ).bind(psychologistId, date).all<SlotRow>();
 
   const existingSlots = existingSlotsResult.results;
@@ -99,7 +99,7 @@ export async function generateSlotsForDate(db: D1Database, date: string, psychol
   for (const slot of toInsert) {
     try {
       await db.prepare(
-        'INSERT INTO slots (psychologist_id, date, start_time, end_time, available) VALUES (?, ?, ?, ?, 1)'
+        'INSERT INTO slots (psychologist_id, "date", start_time, end_time, available) VALUES (?, ?, ?, ?, 1)'
       ).bind(psychologistId, date, slot.start, slot.end).run();
     } catch (e) {
       // Ignore unique constraint failures for concurrent requests
@@ -127,7 +127,7 @@ slotsRouter.get('/', async (c) => {
   await generateSlotsForDate(c.env.DB, date, psychologistId);
 
   const existingSlotsResult = await c.env.DB.prepare(
-    'SELECT id, date, start_time, end_time, available FROM slots WHERE psychologist_id = ? AND date = ? ORDER BY start_time'
+    'SELECT id, "date", start_time, end_time, available FROM slots WHERE psychologist_id = ? AND "date" = ? ORDER BY start_time'
   ).bind(psychologistId, date).all<SlotRow>();
 
   const availableSlots = existingSlotsResult.results
@@ -156,7 +156,7 @@ slotsRouter.get('/all', authMiddleware, async (c) => {
   }
 
   let query = `
-    SELECT s.id, s.date, s.start_time, s.end_time, s.available, s.created_at, s.recurring_booking_id,
+    SELECT s.id, s."date", s.start_time, s.end_time, s.available, s.created_at, s.recurring_booking_id,
            b.id as booking_id, b.patient_name, b.patient_email, b.patient_phone
     FROM slots s
     LEFT JOIN bookings b ON b.slot_id = s.id
@@ -165,7 +165,7 @@ slotsRouter.get('/all', authMiddleware, async (c) => {
   const params: (string | number)[] = [psychologistId];
 
   if (date) {
-    query += ' AND s.date = ?';
+    query += ' AND s."date" = ?';
     params.push(date);
   }
 
@@ -177,7 +177,7 @@ slotsRouter.get('/all', authMiddleware, async (c) => {
     query += ' AND s.available = 0 AND b.id IS NULL';
   }
 
-  query += ' ORDER BY s.date, s.start_time';
+  query += ' ORDER BY s."date", s.start_time';
 
   const result = await c.env.DB.prepare(query).bind(...params).all();
   return c.json({ success: true, data: result.results });
@@ -218,7 +218,7 @@ slotsRouter.post('/', authMiddleware, async (c) => {
 
   const overlap = await c.env.DB.prepare(
     `SELECT COUNT(*) as count FROM slots
-     WHERE psychologist_id = ? AND date = ?
+     WHERE psychologist_id = ? AND "date" = ?
      AND NOT (end_time <= ? OR start_time >= ?)`,
   )
     .bind(psychologistId, date, start_time, end_time)
@@ -229,13 +229,13 @@ slotsRouter.post('/', authMiddleware, async (c) => {
   }
 
   const result = await c.env.DB.prepare(
-    'INSERT INTO slots (psychologist_id, date, start_time, end_time) VALUES (?, ?, ?, ?)',
+    'INSERT INTO slots (psychologist_id, "date", start_time, end_time) VALUES (?, ?, ?, ?)',
   )
     .bind(psychologistId, date, start_time, end_time)
     .run();
 
   return c.json(
-    { success: true, data: { id: result.meta.last_row_id, date, start_time, end_time, available: 1 } },
+    { success: true, data: { id: result.meta.last_row_id, "date": date, start_time, end_time, available: 1 } },
     201,
   );
 });
@@ -291,7 +291,7 @@ slotsRouter.post('/batch', authMiddleware, async (c) => {
     if (days_of_week.includes(dayOfWeek)) {
       const overlap = await c.env.DB.prepare(
         `SELECT COUNT(*) as count FROM slots
-         WHERE psychologist_id = ? AND date = ?
+         WHERE psychologist_id = ? AND "date" = ?
          AND NOT (end_time <= ? OR start_time >= ?)`,
       )
         .bind(psychologistId, dateStr, start_time, end_time)
@@ -300,7 +300,7 @@ slotsRouter.post('/batch', authMiddleware, async (c) => {
       if (!overlap || overlap.count === 0) {
         try {
           await c.env.DB.prepare(
-            'INSERT INTO slots (psychologist_id, date, start_time, end_time) VALUES (?, ?, ?, ?)',
+            'INSERT INTO slots (psychologist_id, "date", start_time, end_time) VALUES (?, ?, ?, ?)',
           )
             .bind(psychologistId, dateStr, start_time, end_time)
             .run();
