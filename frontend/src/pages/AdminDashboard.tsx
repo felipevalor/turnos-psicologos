@@ -1,9 +1,18 @@
 import { useState, useEffect, useCallback } from 'react';
 import { SlotForm } from '../components/SlotForm';
-import { getAllSlots, getBookings, updateSlot, deleteSlot, apiLogout } from '../lib/api';
-import type { Psychologist, SlotWithBooking, BookingWithSlot } from '../lib/types';
+import {
+  getAllSlots,
+  getBookings,
+  updateSlot,
+  deleteSlot,
+  apiLogout,
+  getRecurring,
+  createRecurring,
+  cancelRecurring,
+} from '../lib/api';
+import type { Psychologist, SlotWithBooking, BookingWithSlot, RecurringBooking } from '../lib/types';
 
-type Tab = 'agenda' | 'create' | 'bookings';
+type Tab = 'agenda' | 'create' | 'bookings' | 'recurring';
 
 function formatDate(dateStr: string): string {
   const [y, m, d] = dateStr.split('-').map(Number);
@@ -42,9 +51,21 @@ export function AdminDashboard({ psychologist, onLogout }: Props) {
   const [weekRef, setWeekRef] = useState(new Date());
   const [slots, setSlots] = useState<SlotWithBooking[]>([]);
   const [bookings, setBookings] = useState<BookingWithSlot[]>([]);
+  const [recurrings, setRecurrings] = useState<RecurringBooking[]>([]);
   const [loadingSlots, setLoadingSlots] = useState(false);
   const [loadingBookings, setLoadingBookings] = useState(false);
+  const [loadingRecurring, setLoadingRecurring] = useState(false);
   const [actionError, setActionError] = useState('');
+  const [recurringForm, setRecurringForm] = useState({
+    patient_name: '',
+    patient_email: '',
+    patient_phone: '',
+    start_date: '',
+    time: '',
+    frequency_weeks: 1,
+  });
+  const [recurringFormError, setRecurringFormError] = useState('');
+  const [recurringFormSuccess, setRecurringFormSuccess] = useState('');
 
   const weekDates = getWeekDates(weekRef);
   const weekStart = toDateStr(weekDates[0]);
@@ -68,13 +89,23 @@ export function AdminDashboard({ psychologist, onLogout }: Props) {
     }
   }, []);
 
+  const loadRecurring = useCallback(async () => {
+    setLoadingRecurring(true);
+    const res = await getRecurring();
+    setLoadingRecurring(false);
+    if (res.success && res.data) {
+      setRecurrings(res.data);
+    }
+  }, []);
+
   useEffect(() => {
     loadSlots();
   }, [loadSlots]);
 
   useEffect(() => {
     if (tab === 'bookings') loadBookings();
-  }, [tab, loadBookings]);
+    if (tab === 'recurring') loadRecurring();
+  }, [tab, loadBookings, loadRecurring]);
 
   const handleLogout = async () => {
     await apiLogout();
@@ -103,6 +134,43 @@ export function AdminDashboard({ psychologist, onLogout }: Props) {
       setSlots((prev) => prev.filter((s) => s.id !== slotId));
     } else {
       setActionError(res.error ?? 'Error al eliminar el turno');
+    }
+  };
+
+  const handleCreateRecurring = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setRecurringFormError('');
+    setRecurringFormSuccess('');
+    const res = await createRecurring({
+      ...recurringForm,
+      frequency_weeks: Number(recurringForm.frequency_weeks),
+    });
+    if (res.success && res.data) {
+      setRecurringFormSuccess(
+        `Recurrencia creada. ${res.data.slots_created} turno(s) generado(s).`,
+      );
+      setRecurringForm({
+        patient_name: '',
+        patient_email: '',
+        patient_phone: '',
+        start_date: '',
+        time: '',
+        frequency_weeks: 1,
+      });
+      loadRecurring();
+      loadSlots();
+    } else {
+      setRecurringFormError(res.error ?? 'Error al crear la recurrencia');
+    }
+  };
+
+  const handleCancelRecurring = async (id: number) => {
+    const res = await cancelRecurring(id);
+    if (res.success) {
+      setRecurrings((prev) => prev.filter((r) => r.id !== id));
+      loadSlots();
+    } else {
+      setRecurringFormError(res.error ?? 'Error al cancelar la recurrencia');
     }
   };
 
@@ -159,6 +227,7 @@ export function AdminDashboard({ psychologist, onLogout }: Props) {
                 { id: 'agenda', label: 'Agenda' },
                 { id: 'create', label: 'Crear turnos' },
                 { id: 'bookings', label: 'Reservas' },
+                { id: 'recurring', label: 'Recurrencias' },
               ] as { id: Tab; label: string }[]
             ).map(({ id, label }) => (
               <button
@@ -256,7 +325,12 @@ export function AdminDashboard({ psychologist, onLogout }: Props) {
                                   : 'bg-green-50 border-green-200 text-green-700'
                               }`}
                             >
-                              <div className="font-medium">{slot.start_time}</div>
+                              <div className="font-medium flex items-center gap-1">
+                                {slot.start_time}
+                                {slot.recurring_booking_id !== null && (
+                                  <span title="Turno recurrente" className="opacity-60">↺</span>
+                                )}
+                              </div>
                               {isBooked && (
                                 <div className="text-xs truncate" title={slot.patient_name ?? ''}>
                                   {slot.patient_name}
@@ -292,7 +366,7 @@ export function AdminDashboard({ psychologist, onLogout }: Props) {
             )}
 
             {/* Legend */}
-            <div className="flex gap-4 text-xs text-gray-500 pt-2">
+            <div className="flex gap-4 text-xs text-gray-500 pt-2 flex-wrap">
               <span className="flex items-center gap-1">
                 <span className="w-3 h-3 rounded bg-green-200 inline-block" /> Disponible
               </span>
@@ -302,6 +376,175 @@ export function AdminDashboard({ psychologist, onLogout }: Props) {
               <span className="flex items-center gap-1">
                 <span className="w-3 h-3 rounded bg-gray-200 inline-block" /> Bloqueado
               </span>
+              <span className="flex items-center gap-1">
+                ↺ Recurrente
+              </span>
+            </div>
+          </div>
+        )}
+
+        {/* ── RECURRING TAB ──────────────────────────────── */}
+        {tab === 'recurring' && (
+          <div className="space-y-8">
+            {/* Create form */}
+            <div className="max-w-lg">
+              <h2 className="text-lg font-bold text-gray-800 mb-4">Nueva recurrencia</h2>
+              <form onSubmit={handleCreateRecurring} className="space-y-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Nombre del paciente</label>
+                  <input
+                    type="text"
+                    required
+                    value={recurringForm.patient_name}
+                    onChange={(e) => setRecurringForm((f) => ({ ...f, patient_name: e.target.value }))}
+                    className="w-full border border-gray-300 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    placeholder="Nombre completo"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Email</label>
+                  <input
+                    type="email"
+                    required
+                    value={recurringForm.patient_email}
+                    onChange={(e) => setRecurringForm((f) => ({ ...f, patient_email: e.target.value }))}
+                    className="w-full border border-gray-300 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    placeholder="paciente@email.com"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Teléfono</label>
+                  <input
+                    type="text"
+                    required
+                    value={recurringForm.patient_phone}
+                    onChange={(e) => setRecurringForm((f) => ({ ...f, patient_phone: e.target.value }))}
+                    className="w-full border border-gray-300 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    placeholder="+5491112345678"
+                  />
+                </div>
+                <div className="flex gap-3">
+                  <div className="flex-1">
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Fecha de inicio</label>
+                    <input
+                      type="date"
+                      required
+                      value={recurringForm.start_date}
+                      onChange={(e) => setRecurringForm((f) => ({ ...f, start_date: e.target.value }))}
+                      className="w-full border border-gray-300 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    />
+                  </div>
+                  <div className="flex-1">
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Hora</label>
+                    <input
+                      type="time"
+                      required
+                      value={recurringForm.time}
+                      onChange={(e) => setRecurringForm((f) => ({ ...f, time: e.target.value }))}
+                      className="w-full border border-gray-300 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    />
+                  </div>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Frecuencia</label>
+                  <select
+                    value={recurringForm.frequency_weeks}
+                    onChange={(e) =>
+                      setRecurringForm((f) => ({ ...f, frequency_weeks: Number(e.target.value) }))
+                    }
+                    className="w-full border border-gray-300 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  >
+                    <option value={1}>Cada semana</option>
+                    <option value={2}>Cada 2 semanas</option>
+                    <option value={3}>Cada 3 semanas</option>
+                    <option value={4}>Cada 4 semanas</option>
+                  </select>
+                </div>
+                {recurringFormError && (
+                  <p className="text-sm text-red-600 bg-red-50 border border-red-200 rounded-xl px-3 py-2">
+                    {recurringFormError}
+                  </p>
+                )}
+                {recurringFormSuccess && (
+                  <p className="text-sm text-green-700 bg-green-50 border border-green-200 rounded-xl px-3 py-2">
+                    {recurringFormSuccess}
+                  </p>
+                )}
+                <button
+                  type="submit"
+                  className="w-full bg-blue-600 text-white rounded-xl py-2 text-sm font-medium hover:bg-blue-700 transition-colors"
+                >
+                  Crear recurrencia
+                </button>
+              </form>
+            </div>
+
+            {/* Active recurrences list */}
+            <div>
+              <div className="flex items-center justify-between mb-4">
+                <h2 className="text-lg font-bold text-gray-800">Recurrencias activas</h2>
+                <button onClick={loadRecurring} className="text-sm text-blue-600 hover:underline">
+                  Actualizar
+                </button>
+              </div>
+              {loadingRecurring ? (
+                <div className="flex justify-center py-12">
+                  <div className="w-8 h-8 border-4 border-blue-500 border-t-transparent rounded-full animate-spin" />
+                </div>
+              ) : recurrings.length === 0 ? (
+                <p className="text-center text-gray-400 py-12">No hay recurrencias activas.</p>
+              ) : (
+                <div className="bg-white rounded-2xl border border-gray-200 overflow-hidden">
+                  <table className="w-full text-sm">
+                    <thead>
+                      <tr className="bg-gray-50 border-b border-gray-200">
+                        <th className="text-left px-4 py-3 font-medium text-gray-600">Paciente</th>
+                        <th className="text-left px-4 py-3 font-medium text-gray-600">Frecuencia</th>
+                        <th className="text-left px-4 py-3 font-medium text-gray-600">Desde</th>
+                        <th className="text-left px-4 py-3 font-medium text-gray-600">Hora</th>
+                        <th className="text-left px-4 py-3 font-medium text-gray-600">Próximo turno</th>
+                        <th className="px-4 py-3" />
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-gray-100">
+                      {recurrings.map((r) => (
+                        <tr key={r.id} className="hover:bg-gray-50">
+                          <td className="px-4 py-3">
+                            <div className="font-medium text-gray-800">{r.patient_name}</div>
+                            <div className="text-xs text-gray-400">{r.patient_email}</div>
+                          </td>
+                          <td className="px-4 py-3 text-gray-600">
+                            {r.frequency_weeks === 1
+                              ? 'Semanal'
+                              : `Cada ${r.frequency_weeks} semanas`}
+                          </td>
+                          <td className="px-4 py-3 text-gray-500">{formatDate(r.start_date)}</td>
+                          <td className="px-4 py-3 text-gray-500">{r.time}</td>
+                          <td className="px-4 py-3 text-gray-500">
+                            {r.next_appointment ? formatDate(r.next_appointment) : '—'}
+                          </td>
+                          <td className="px-4 py-3 text-right">
+                            <button
+                              onClick={() => {
+                                if (
+                                  window.confirm(
+                                    `¿Cancelar toda la recurrencia de ${r.patient_name}? Se eliminarán todos los turnos futuros.`,
+                                  )
+                                ) {
+                                  handleCancelRecurring(r.id);
+                                }
+                              }}
+                              className="text-xs text-red-500 hover:underline font-medium"
+                            >
+                              Cancelar recurrencia
+                            </button>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
             </div>
           </div>
         )}

@@ -64,7 +64,7 @@ slotsRouter.get('/all', authMiddleware, async (c) => {
   const status = c.req.query('status');
 
   let query = `
-    SELECT s.id, s.date, s.start_time, s.end_time, s.available, s.created_at,
+    SELECT s.id, s.date, s.start_time, s.end_time, s.available, s.created_at, s.recurring_booking_id,
            b.id as booking_id, b.patient_name, b.patient_email, b.patient_phone
     FROM slots s
     LEFT JOIN bookings b ON b.slot_id = s.id

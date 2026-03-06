@@ -8,3 +8,4 @@ database_name = "turnos-psicologos"
 database_id = "32e360b3-ef70-4858-a0b6-a31983298932"
 
 [vars]
+JWT_SECRET = "dev-secret-change-in-production"

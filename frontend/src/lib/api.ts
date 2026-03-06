@@ -1,4 +1,4 @@
-import type { Slot, SlotWithBooking, BookingWithSlot, BookingResult } from './types';
+import type { Slot, SlotWithBooking, BookingWithSlot, BookingResult, RecurringBooking } from './types';
 
 export type ApiResponse<T = void> = {
   success: boolean;
@@ -96,3 +96,26 @@ export const cancelBooking = (id: number, email: string, phone: string) =>
 // ── Bookings (admin) ──────────────────────────────────────────────────────────
 
 export const getBookings = () => request<BookingWithSlot[]>('/bookings');
+
+// ── Recurring bookings (admin) ────────────────────────────────────────────────
+
+export const getRecurring = () => request<RecurringBooking[]>('/recurring');
+
+export const createRecurring = (data: {
+  patient_name: string;
+  patient_email: string;
+  patient_phone: string;
+  start_date: string;
+  time: string;
+  frequency_weeks: number;
+}) =>
+  request<{ recurring_booking: RecurringBooking; slots_created: number; slots_skipped: number }>(
+    '/recurring',
+    { method: 'POST', body: JSON.stringify(data) },
+  );
+
+export const cancelRecurring = (id: number) =>
+  request<{ slots_deleted: number }>(`/recurring/${id}`, { method: 'DELETE' });
+
+export const extendRecurring = () =>
+  request<{ slots_created: number; slots_skipped: number }>('/recurring/extend', { method: 'POST' });

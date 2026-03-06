@@ -3,6 +3,7 @@ import { cors } from 'hono/cors';
 import { authRouter } from './routes/auth';
 import { slotsRouter } from './routes/slots';
 import { bookingsRouter } from './routes/bookings';
+import { recurringRouter } from './routes/recurring';
 import type { Env, AppVariables } from './types';
 
 const app = new Hono<{ Bindings: Env; Variables: AppVariables }>();
@@ -20,6 +21,7 @@ app.use(
 app.route('/api/auth', authRouter);
 app.route('/api/slots', slotsRouter);
 app.route('/api/bookings', bookingsRouter);
+app.route('/api/recurring', recurringRouter);
 
 app.notFound((c) => c.json({ success: false, error: 'Ruta no encontrada' }, 404));
 
