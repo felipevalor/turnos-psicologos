@@ -32,6 +32,14 @@ app.route('/api/recurring', recurringRouter);
 app.route('/api/schedule', scheduleRouter);
 app.route('/api/holidays', holidaysRouter);
 
+// GET /api/contact — public psychologist contact info
+app.get('/api/contact', async (c) => {
+  const row = await c.env.DB.prepare(
+    'SELECT nombre, whatsapp_number FROM psicologos LIMIT 1',
+  ).first<{ nombre: string; whatsapp_number: string | null }>();
+  return c.json({ success: true, data: { nombre: row?.nombre ?? '', whatsapp_number: row?.whatsapp_number ?? null } });
+});
+
 app.notFound((c) => c.json({ success: false, error: 'Ruta no encontrada' }, 404));
 
 app.onError((err, c) => {

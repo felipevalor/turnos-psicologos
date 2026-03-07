@@ -9,7 +9,6 @@ import {
 } from '../lib/api';
 import type { Slot, BookingResult, BookingWithSlot } from '../lib/types';
 
-const WHATSAPP_CONTACT = '5491112345678';
 
 function formatDate(dateStr: string): string {
   if (!dateStr) return '';
@@ -401,9 +400,9 @@ export function PatientView() {
               {cancelMsg && (
                 <div className="mt-3 p-4 bg-[#4caf7d]/10 border border-[#4caf7d]/20 rounded-xl space-y-2">
                   <p className="text-sm text-[#1e6e44]">{cancelMsg}</p>
-                  {cancelMsg.includes('cancelada') && (
+                  {cancelMsg.includes('cancelada') && psychologistContact?.whatsapp_number && (
                     <a
-                      href={`https://wa.me/${WHATSAPP_CONTACT}`}
+                      href={`https://wa.me/${psychologistContact.whatsapp_number.replace(/\D/g, '')}`}
                       target="_blank"
                       rel="noopener noreferrer"
                       className="inline-flex items-center gap-1.5 text-sm font-bold text-[#1e6e44] underline"

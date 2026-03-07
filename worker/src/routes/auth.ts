@@ -10,6 +10,10 @@ type PsychologistRow = {
   email: string;
   password_hash: string;
   session_duration_minutes: number;
+  cancel_min_hours: number;
+  reschedule_min_hours: number;
+  booking_min_hours: number;
+  whatsapp_number: string | null;
 };
 
 export const authRouter = new Hono<{ Bindings: Env; Variables: AppVariables }>();
@@ -19,7 +23,9 @@ authRouter.get('/me', authMiddleware, async (c) => {
   const psychologistId = c.get('psychologistId');
 
   const psych = await c.env.DB.prepare(
-    'SELECT id, nombre as name, email, session_duration_minutes FROM psicologos WHERE id = ?',
+    `SELECT id, nombre as name, email, session_duration_minutes,
+            cancel_min_hours, reschedule_min_hours, booking_min_hours, whatsapp_number
+     FROM psicologos WHERE id = ?`,
   )
     .bind(psychologistId)
     .first<Omit<PsychologistRow, 'password_hash'>>();
@@ -35,32 +41,62 @@ authRouter.get('/me', authMiddleware, async (c) => {
 authRouter.patch('/me', authMiddleware, async (c) => {
   const psychologistId = c.get('psychologistId');
 
-  let body: { session_duration_minutes?: number };
+  let body: {
+    session_duration_minutes?: number;
+    cancel_min_hours?: number;
+    reschedule_min_hours?: number;
+    booking_min_hours?: number;
+    whatsapp_number?: string | null;
+  };
   try {
     body = await c.req.json();
   } catch {
     return c.json({ success: false, error: 'Cuerpo JSON inválido' }, 400);
   }
 
-  const { session_duration_minutes } = body;
+  const { session_duration_minutes, cancel_min_hours, reschedule_min_hours, booking_min_hours, whatsapp_number } = body;
 
   if (session_duration_minutes !== undefined) {
     if (![30, 45, 50, 60].includes(session_duration_minutes)) {
-      return c.json(
-        { success: false, error: 'La duración debe ser 30, 45, 50 o 60 minutos' },
-        400,
-      );
+      return c.json({ success: false, error: 'La duración debe ser 30, 45, 50 o 60 minutos' }, 400);
     }
+    await c.env.DB.prepare('UPDATE psicologos SET session_duration_minutes = ? WHERE id = ?')
+      .bind(session_duration_minutes, psychologistId).run();
+  }
 
-    await c.env.DB.prepare(
-      'UPDATE psicologos SET session_duration_minutes = ? WHERE id = ?',
-    )
-      .bind(session_duration_minutes, psychologistId)
-      .run();
+  if (cancel_min_hours !== undefined) {
+    if (typeof cancel_min_hours !== 'number' || cancel_min_hours < 0 || cancel_min_hours > 168) {
+      return c.json({ success: false, error: 'cancel_min_hours debe ser entre 0 y 168' }, 400);
+    }
+    await c.env.DB.prepare('UPDATE psicologos SET cancel_min_hours = ? WHERE id = ?')
+      .bind(cancel_min_hours, psychologistId).run();
+  }
+
+  if (reschedule_min_hours !== undefined) {
+    if (typeof reschedule_min_hours !== 'number' || reschedule_min_hours < 0 || reschedule_min_hours > 168) {
+      return c.json({ success: false, error: 'reschedule_min_hours debe ser entre 0 y 168' }, 400);
+    }
+    await c.env.DB.prepare('UPDATE psicologos SET reschedule_min_hours = ? WHERE id = ?')
+      .bind(reschedule_min_hours, psychologistId).run();
+  }
+
+  if (booking_min_hours !== undefined) {
+    if (typeof booking_min_hours !== 'number' || booking_min_hours < 0 || booking_min_hours > 168) {
+      return c.json({ success: false, error: 'booking_min_hours debe ser entre 0 y 168' }, 400);
+    }
+    await c.env.DB.prepare('UPDATE psicologos SET booking_min_hours = ? WHERE id = ?')
+      .bind(booking_min_hours, psychologistId).run();
+  }
+
+  if (whatsapp_number !== undefined) {
+    await c.env.DB.prepare('UPDATE psicologos SET whatsapp_number = ? WHERE id = ?')
+      .bind(whatsapp_number, psychologistId).run();
   }
 
   const psych = await c.env.DB.prepare(
-    'SELECT id, nombre as name, email, session_duration_minutes FROM psicologos WHERE id = ?',
+    `SELECT id, nombre as name, email, session_duration_minutes,
+            cancel_min_hours, reschedule_min_hours, booking_min_hours, whatsapp_number
+     FROM psicologos WHERE id = ?`,
   )
     .bind(psychologistId)
     .first<Omit<PsychologistRow, 'password_hash'>>();
@@ -83,7 +119,9 @@ authRouter.post('/login', async (c) => {
   }
 
   const psych = await c.env.DB.prepare(
-    'SELECT id, nombre as name, email, password_hash, session_duration_minutes FROM psicologos WHERE email = ?',
+    `SELECT id, nombre as name, email, password_hash, session_duration_minutes,
+            cancel_min_hours, reschedule_min_hours, booking_min_hours, whatsapp_number
+     FROM psicologos WHERE email = ?`,
   )
     .bind(email)
     .first<PsychologistRow>();
@@ -111,7 +149,11 @@ authRouter.post('/login', async (c) => {
         id: psych.id,
         name: psych.name,
         email: psych.email,
-        session_duration_minutes: psych.session_duration_minutes
+        session_duration_minutes: psych.session_duration_minutes,
+        cancel_min_hours: psych.cancel_min_hours,
+        reschedule_min_hours: psych.reschedule_min_hours,
+        booking_min_hours: psych.booking_min_hours,
+        whatsapp_number: psych.whatsapp_number,
       },
     },
   });

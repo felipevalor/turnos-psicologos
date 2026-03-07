@@ -83,6 +83,8 @@ async function generateSlots(
   let skipped = 0;
   let current = fromDate;
 
+  console.error(`[generateSlots] recurringId=${recurringId} range=${fromDate}→${toDate} time=${time} end=${end_time} freq=${frequencyWeeks}w psychologist=${psychologistId}`);
+
   while (current <= toDate) {
     const overlap = await db
       .prepare(
@@ -97,36 +99,37 @@ async function generateSlots(
       try {
         const slotResult = await db
           .prepare(
-            `INSERT INTO slots (psicologo_id, fecha, hora_inicio, hora_fin, disponible, recurring_booking_id)
-             VALUES (?, ?, ?, ?, 0, ?)`,
+            `INSERT INTO slots (psicologo_id, fecha, hora_inicio, hora_fin, disponible)
+             VALUES (?, ?, ?, ?, 0)`,
           )
-          .bind(psychologistId, current, time, end_time, recurringId)
+          .bind(psychologistId, current, time, end_time)
           .run();
 
         const slotId = slotResult.meta.last_row_id;
+        console.error(`[generateSlots] ${current}: slot created id=${slotId}`);
 
         await db
           .prepare(
-            `INSERT INTO reservas (slot_id, paciente_nombre, paciente_email, paciente_telefono, recurring_booking_id)
-             VALUES (?, ?, ?, ?, ?)`,
+            `INSERT INTO reservas (slot_id, paciente_nombre, paciente_email, paciente_telefono)
+             VALUES (?, ?, ?, ?)`,
           )
-          .bind(slotId, patientName, patientEmail, patientPhone, recurringId)
+          .bind(slotId, patientName, patientEmail, patientPhone)
           .run();
 
-        // Mark the slot as unavailable since it's booked (already set to 0 above)
-        // No separate update needed since we insert with disponible = 0
-
         created++;
-      } catch {
+      } catch (err) {
+        console.error(`[generateSlots] ${current}: INSERT failed —`, err);
         skipped++;
       }
     } else {
+      console.error(`[generateSlots] ${current}: skipped — overlap.count=${overlap?.count}`);
       skipped++;
     }
 
     current = addDays(current, frequencyWeeks * 7);
   }
 
+  console.error(`[generateSlots] done: created=${created} skipped=${skipped}`);
   return { created, skipped };
 }
 
@@ -212,35 +215,37 @@ recurringRouter.post('/', authMiddleware, async (c) => {
 recurringRouter.get('/', authMiddleware, async (c) => {
   const psychologistId = c.get('psychologistId');
 
-  const result = await c.env.DB.prepare(
-    `SELECT rb.id, rb.patient_name, rb.patient_email, rb.patient_phone,
-            rb.frequency_weeks, rb.start_date, rb.time, rb.active, rb.created_at,
-            MIN(s.fecha) as next_appointment
-     FROM recurring_bookings rb
-     LEFT JOIN slots s ON s.recurring_booking_id = rb.id AND s.fecha >= date('now')
-     WHERE rb.psychologist_id = ? AND rb.active = 1
-     GROUP BY rb.id
-     ORDER BY rb.start_date`,
-  )
-    .bind(psychologistId)
-    .all<RecurringRow>();
+  try {
+    const result = await c.env.DB.prepare(
+      `SELECT rb.id, rb.patient_name, rb.patient_email, rb.patient_phone,
+              rb.frequency_weeks, rb.start_date, rb."time", rb.active, rb.created_at,
+              (
+                SELECT MIN(s.fecha)
+                FROM slots s
+                JOIN reservas r ON r.slot_id = s.id
+                WHERE r.paciente_email = rb.patient_email
+                  AND r.paciente_telefono = rb.patient_phone
+                  AND s.hora_inicio = rb."time"
+                  AND s.fecha >= date('now')
+              ) as next_appointment
+       FROM recurring_bookings rb
+       WHERE rb.psychologist_id = ? AND rb.active = 1
+       ORDER BY rb.start_date`,
+    )
+      .bind(psychologistId)
+      .all<RecurringRow>();
 
-  return c.json({ success: true, data: result.results });
+    return c.json({ success: true, data: result.results });
+  } catch (error) {
+    console.error('[GET /recurring] D1 query failed:', error);
+    return c.json({ success: false, error: 'Error al obtener recurrencias' }, 500);
+  }
 });
 
 // DELETE /api/recurring/:id — cancel entire recurrence (admin or patient)
 recurringRouter.delete('/:id', async (c) => {
   const authHeader = c.req.header('Authorization');
-  let isPsychologist = false;
-  let psychologistId: number | undefined;
-
-  if (authHeader?.startsWith('Bearer ')) {
-    isPsychologist = true;
-    // We don't have easy access to psychologistId here without calling authMiddleware correctly,
-    // but the existing code used it. Let's see how it was done.
-    // Actually, recurringRouter.delete was using authMiddleware.
-    // I will modify the route to accommodate both.
-  }
+  const isPsychologist = authHeader?.startsWith('Bearer ') ?? false;
 
   const id = Number(c.req.param('id'));
   let email: string | undefined;
@@ -255,55 +260,69 @@ recurringRouter.delete('/:id', async (c) => {
     } catch {
       return c.json({ success: false, error: 'Cuerpo JSON inválido' }, 400);
     }
-    if (!email || !phone) {
-      return c.json({ success: false, error: 'Email y teléfono requeridos para cancelar la recurrencia' }, 400);
+    if (!email && !phone) {
+      return c.json({ success: false, error: 'Ingresá tu email o teléfono para cancelar' }, 400);
     }
   }
 
-  // Find the recurrence
-  let query = 'SELECT id, psychologist_id FROM recurring_bookings WHERE id = ? AND active = 1';
-  let params: any[] = [id];
+  try {
+    const recurring = await c.env.DB.prepare(
+      `SELECT id, psychologist_id, patient_email, patient_phone, "time"
+       FROM recurring_bookings WHERE id = ? AND active = 1`,
+    )
+      .bind(id)
+      .first<{ id: number; psychologist_id: number; patient_email: string; patient_phone: string; time: string }>();
 
-  if (!isPsychologist) {
-    query += ' AND patient_email = ? AND patient_phone = ?';
-    params.push(email, phone);
-  }
-
-  const recurring = await c.env.DB.prepare(query).bind(...params).first<{ id: number; psychologist_id: number }>();
-
-  if (!recurring) {
-    return c.json({ success: false, error: 'Recurrencia no encontrada o datos incorrectos' }, 404);
-  }
-
-  const today = todayStr();
-
-  // Get future slot IDs linked to this recurrence
-  const futureSlots = await c.env.DB.prepare(
-    `SELECT id FROM slots WHERE recurring_booking_id = ? AND fecha > ?`,
-  )
-    .bind(id, today)
-    .all<SlotIdRow>();
-
-  const slotIds = futureSlots.results.map((s) => s.id);
-
-  if (slotIds.length > 0) {
-    // Delete future bookings first (FK), then slots, in batches
-    const batchSize = 50;
-    for (let i = 0; i < slotIds.length; i += batchSize) {
-      const chunk = slotIds.slice(i, i + batchSize);
-      const placeholders = chunk.map(() => '?').join(', ');
-      await c.env.DB.prepare(`DELETE FROM reservas WHERE slot_id IN (${placeholders})`)
-        .bind(...chunk)
-        .run();
-      await c.env.DB.prepare(`DELETE FROM slots WHERE id IN (${placeholders})`)
-        .bind(...chunk)
-        .run();
+    if (!recurring) {
+      return c.json({ success: false, error: 'Recurrencia no encontrada' }, 404);
     }
+
+    if (!isPsychologist) {
+      const emailMatch = email && recurring.patient_email === email;
+      const phoneMatch = phone && recurring.patient_phone === phone;
+      if (!emailMatch && !phoneMatch) {
+        return c.json({ success: false, error: 'Datos de verificación incorrectos' }, 403);
+      }
+    }
+
+    const today = todayStr();
+
+    // Find future slots for this recurrence via reservas (slots has no recurring_booking_id column)
+    const futureSlots = await c.env.DB.prepare(
+      `SELECT s.id FROM slots s
+       JOIN reservas r ON r.slot_id = s.id
+       WHERE r.paciente_email = ?
+         AND r.paciente_telefono = ?
+         AND s.hora_inicio = ?
+         AND s.fecha > ?
+         AND s.psicologo_id = ?`,
+    )
+      .bind(recurring.patient_email, recurring.patient_phone, recurring.time, today, recurring.psychologist_id)
+      .all<SlotIdRow>();
+
+    const slotIds = futureSlots.results.map((s) => s.id);
+
+    if (slotIds.length > 0) {
+      const batchSize = 50;
+      for (let i = 0; i < slotIds.length; i += batchSize) {
+        const chunk = slotIds.slice(i, i + batchSize);
+        const placeholders = chunk.map(() => '?').join(', ');
+        await c.env.DB.prepare(`DELETE FROM reservas WHERE slot_id IN (${placeholders})`)
+          .bind(...chunk)
+          .run();
+        await c.env.DB.prepare(`DELETE FROM slots WHERE id IN (${placeholders})`)
+          .bind(...chunk)
+          .run();
+      }
+    }
+
+    await c.env.DB.prepare('UPDATE recurring_bookings SET active = 0 WHERE id = ?').bind(id).run();
+
+    return c.json({ success: true, data: { slots_deleted: slotIds.length } });
+  } catch (error) {
+    console.error('[DELETE /recurring/:id] D1 query failed:', error);
+    return c.json({ success: false, error: 'Error al cancelar la recurrencia' }, 500);
   }
-
-  await c.env.DB.prepare('UPDATE recurring_bookings SET active = 0 WHERE id = ?').bind(id).run();
-
-  return c.json({ success: true, data: { slots_deleted: slotIds.length } });
 });
 
 // PATCH /api/recurring/:id/reschedule-from — reschedule this and all future recurring instances
@@ -317,19 +336,25 @@ recurringRouter.patch('/:id/reschedule-from', async (c) => {
   }
 
   const { email, phone, from_date, new_time } = body;
-  if (!email || !phone || !from_date || !new_time) {
-    return c.json({ success: false, error: 'Email, teléfono, fecha de inicio y nueva hora son requeridos' }, 400);
+  if ((!email && !phone) || !from_date || !new_time) {
+    return c.json({ success: false, error: 'Ingresá tu email o teléfono, fecha de inicio y nueva hora son requeridos' }, 400);
   }
 
-  // 1. Validate recurrence and patient identity
+  // 1. Fetch recurrence and verify patient identity (email OR phone)
   const recurring = await c.env.DB.prepare(
-    `SELECT * FROM recurring_bookings WHERE id = ? AND patient_email = ? AND patient_phone = ? AND active = 1`
+    `SELECT * FROM recurring_bookings WHERE id = ? AND active = 1`
   )
-    .bind(id, email, phone)
+    .bind(id)
     .first<RecurringRow>();
 
   if (!recurring) {
-    return c.json({ success: false, error: 'Recurrencia no encontrada o datos incorrectos' }, 404);
+    return c.json({ success: false, error: 'Recurrencia no encontrada' }, 404);
+  }
+
+  const emailMatch = email && recurring.patient_email === email;
+  const phoneMatch = phone && recurring.patient_phone === phone;
+  if (!emailMatch && !phoneMatch) {
+    return c.json({ success: false, error: 'Datos de verificación incorrectos' }, 403);
   }
 
   // 2. Get session duration to calculate new end_time
@@ -339,13 +364,18 @@ recurringRouter.patch('/:id/reschedule-from', async (c) => {
   const sessionDuration = config?.session_duration_minutes ?? 45;
   const newEndTime = addMinutes(new_time, sessionDuration);
 
-  // 3. Find all future slots in the series (date >= from_date)
+  // 3. Find all future slots in the series via reservas (slots has no recurring_booking_id column)
   const futureSlots = await c.env.DB.prepare(
     `SELECT s.id, s.fecha as date FROM slots s
-     WHERE s.recurring_booking_id = ? AND s.fecha >= ?
-     ORDER BY s.fecha`
+     JOIN reservas r ON r.slot_id = s.id
+     WHERE r.paciente_email = ?
+       AND r.paciente_telefono = ?
+       AND s.hora_inicio = ?
+       AND s.fecha >= ?
+       AND s.psicologo_id = ?
+     ORDER BY s.fecha`,
   )
-    .bind(id, from_date)
+    .bind(recurring.patient_email, recurring.patient_phone, recurring.time, from_date, recurring.psychologist_id)
     .all<{ id: number; date: string }>();
 
   if (futureSlots.results.length === 0) {
@@ -353,58 +383,13 @@ recurringRouter.patch('/:id/reschedule-from', async (c) => {
   }
 
   let rescheduledCount = 0;
-  const batchStatements = [];
-
-  for (const slot of futureSlots.results) {
-    // Check for conflicts at the new time on the same date (excluding the slot itself)
-    const conflict = await c.env.DB.prepare(
-      `SELECT id FROM slots
-       WHERE psicologo_id = ? AND fecha = ? AND id NOT IN (SELECT id FROM slots WHERE recurring_booking_id = ?)
-       AND NOT (hora_fin <= ? OR hora_inicio >= ?)`
-    )
-      .bind(recurring.psychologist_id, slot.date, id, new_time, newEndTime)
-      .first();
-
-    if (conflict) {
-      // Requirement 15: Skip dates where new slot would conflict
-      continue;
-    }
-
-    // Free old slot and delete its booking, then create new slot and booking
-    // Note: D1 batch doesn't support conditional logic easily inside the loop, 
-    // but requirement 12 says "free the old slot, delete the old booking, create a new slot ... create a new booking"
-
-    // We can't really do "create new slot" and "create new booking" easily inside a D1 batch if we want to reuse IDs,
-    // but we can update the existing slots if they are already there!
-    // But requirement 12 specifically says "free the old slot, delete the old booking... create a new slot..."
-    // Given D1 limitations and wanting to keep it atomic, I'll update the existing ones if possible, 
-    // or delete and insert if that's what's meant.
-    // Actually, "free old slot" usually means available = 1, but here we want to MOVE them.
-
-    // Let's stick to updating the existing slot and booking records if it's the same series.
-    // BUT the requirement says "delete the old booking, create a new booking". 
-    // I will follow the instruction literally.
-
-    batchStatements.push(
-      c.env.DB.prepare('UPDATE slots SET available = 1, recurring_booking_id = NULL WHERE id = ?').bind(slot.id),
-      c.env.DB.prepare('DELETE FROM bookings WHERE slot_id = ?').bind(slot.id),
-      c.env.DB.prepare(
-        'INSERT INTO slots (psychologist_id, "date", start_time, end_time, available, recurring_booking_id) VALUES (?, ?, ?, ?, 0, ?)'
-      ).bind(recurring.psychologist_id, slot.date, new_time, newEndTime, id)
-    );
-    // We'll need the new slot ID for the booking. This is tricky in batch if we have many.
-    // Actually, I can just update the existing slot and booking! It's much cleaner and achieves the same result (rescheduling).
-  }
-
-  // REVISED PLAN for Step 12: Update existing slots and bookings instead of delete/insert to keep it simpler in D1 batch.
-  // It effectively "frees the old slot" (it's gone/changed) and "creates a new one" (it's updated).
-
   const finalBatch = [];
+
   for (const slot of futureSlots.results) {
     const conflict = await c.env.DB.prepare(
       `SELECT id FROM slots
        WHERE psicologo_id = ? AND fecha = ? AND id != ?
-       AND NOT (hora_fin <= ? OR hora_inicio >= ?)`
+       AND NOT (hora_fin <= ? OR hora_inicio >= ?)`,
     )
       .bind(recurring.psychologist_id, slot.date, slot.id, new_time, newEndTime)
       .first();
@@ -412,14 +397,13 @@ recurringRouter.patch('/:id/reschedule-from', async (c) => {
     if (conflict) continue;
 
     finalBatch.push(
-      c.env.DB.prepare('UPDATE slots SET start_time = ?, end_time = ? WHERE id = ?').bind(new_time, newEndTime, slot.id)
+      c.env.DB.prepare('UPDATE slots SET hora_inicio = ?, hora_fin = ? WHERE id = ?').bind(new_time, newEndTime, slot.id),
     );
     rescheduledCount++;
   }
 
-  // Update recurring_bookings.time
   finalBatch.push(
-    c.env.DB.prepare('UPDATE recurring_bookings SET time = ? WHERE id = ?').bind(new_time, id)
+    c.env.DB.prepare('UPDATE recurring_bookings SET "time" = ? WHERE id = ?').bind(new_time, id),
   );
 
   if (finalBatch.length > 0) {
@@ -436,12 +420,18 @@ recurringRouter.post('/extend', authMiddleware, async (c) => {
 
   const recurrences = await c.env.DB.prepare(
     `SELECT rb.id, rb.patient_name, rb.patient_email, rb.patient_phone,
-            rb.frequency_weeks, rb.start_date, rb.time,
-            MAX(s.fecha) as last_generated
+            rb.frequency_weeks, rb.start_date, rb."time",
+            (
+              SELECT MAX(s.fecha)
+              FROM slots s
+              JOIN reservas r ON r.slot_id = s.id
+              WHERE r.paciente_email = rb.patient_email
+                AND r.paciente_telefono = rb.patient_phone
+                AND s.hora_inicio = rb."time"
+                AND s.psicologo_id = rb.psychologist_id
+            ) as last_generated
      FROM recurring_bookings rb
-     LEFT JOIN slots s ON s.recurring_booking_id = rb.id
-     WHERE rb.psychologist_id = ? AND rb.active = 1
-     GROUP BY rb.id`,
+     WHERE rb.psychologist_id = ? AND rb.active = 1`,
   )
     .bind(psychologistId)
     .all<RecurringRow & { last_generated: string | null }>();
