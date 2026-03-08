@@ -6,6 +6,7 @@ import { bookingsRouter } from './routes/bookings';
 import { recurringRouter } from './routes/recurring';
 import { scheduleRouter } from './routes/schedule';
 import { holidaysRouter } from './routes/holidays';
+import { dashboardRouter } from './routes/dashboard';
 import type { Env, AppVariables } from './types';
 
 const app = new Hono<{ Bindings: Env; Variables: AppVariables }>();
@@ -26,6 +27,7 @@ app.use(
 );
 
 app.route('/api/auth', authRouter);
+app.route('/api/dashboard', dashboardRouter);
 app.route('/api/slots', slotsRouter);
 app.route('/api/bookings', bookingsRouter);
 app.route('/api/recurring', recurringRouter);

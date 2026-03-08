@@ -57,6 +57,7 @@ export interface Psychologist {
   reschedule_min_hours: number;
   booking_min_hours: number;
   whatsapp_number: string | null;
+  policy_unit: 'minutes' | 'hours' | 'days';
 }
 
 export interface WeeklyDaySchedule {
@@ -70,4 +71,36 @@ export interface Holiday {
   date: string;
   localName: string;
   overridden: boolean;
+}
+
+export interface DashboardData {
+  today: {
+    date: string;
+    upcoming_sessions: { id: number; hora_inicio: string; hora_fin: string; patient_name: string; patient_email: string }[];
+  };
+  week: {
+    total_slots: number;
+    booked_slots: number;
+    occupancy_pct: number;
+    cancelled: number;
+    prev_total_slots: number;
+    prev_booked_slots: number;
+    prev_occupancy_pct: number;
+  };
+  month: {
+    total_slots: number;
+    booked_slots: number;
+    occupancy_pct: number;
+    new_sessions: number;
+    cancelled: number;
+    cancellation_rate_pct: number;
+    prev_total_slots: number;
+    prev_booked_slots: number;
+    prev_occupancy_pct: number;
+    prev_cancelled: number;
+  };
+  patients: {
+    active: number;
+    new_this_month: number;
+  };
 }

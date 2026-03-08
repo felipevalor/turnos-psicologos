@@ -14,6 +14,7 @@ type PsychologistRow = {
   reschedule_min_hours: number;
   booking_min_hours: number;
   whatsapp_number: string | null;
+  policy_unit: 'minutes' | 'hours' | 'days';
 };
 
 export const authRouter = new Hono<{ Bindings: Env; Variables: AppVariables }>();
@@ -24,7 +25,7 @@ authRouter.get('/me', authMiddleware, async (c) => {
 
   const psych = await c.env.DB.prepare(
     `SELECT id, nombre as name, email, session_duration_minutes,
-            cancel_min_hours, reschedule_min_hours, booking_min_hours, whatsapp_number
+            cancel_min_hours, reschedule_min_hours, booking_min_hours, whatsapp_number, policy_unit
      FROM psicologos WHERE id = ?`,
   )
     .bind(psychologistId)
@@ -47,6 +48,7 @@ authRouter.patch('/me', authMiddleware, async (c) => {
     reschedule_min_hours?: number;
     booking_min_hours?: number;
     whatsapp_number?: string | null;
+    policy_unit?: 'minutes' | 'hours' | 'days';
   };
   try {
     body = await c.req.json();
@@ -54,7 +56,7 @@ authRouter.patch('/me', authMiddleware, async (c) => {
     return c.json({ success: false, error: 'Cuerpo JSON inválido' }, 400);
   }
 
-  const { session_duration_minutes, cancel_min_hours, reschedule_min_hours, booking_min_hours, whatsapp_number } = body;
+  const { session_duration_minutes, cancel_min_hours, reschedule_min_hours, booking_min_hours, whatsapp_number, policy_unit } = body;
 
   if (session_duration_minutes !== undefined) {
     if (![30, 45, 50, 60].includes(session_duration_minutes)) {
@@ -93,9 +95,17 @@ authRouter.patch('/me', authMiddleware, async (c) => {
       .bind(whatsapp_number, psychologistId).run();
   }
 
+  if (policy_unit !== undefined) {
+    if (!['minutes', 'hours', 'days'].includes(policy_unit)) {
+      return c.json({ success: false, error: 'policy_unit debe ser minutes, hours o days' }, 400);
+    }
+    await c.env.DB.prepare('UPDATE psicologos SET policy_unit = ? WHERE id = ?')
+      .bind(policy_unit, psychologistId).run();
+  }
+
   const psych = await c.env.DB.prepare(
     `SELECT id, nombre as name, email, session_duration_minutes,
-            cancel_min_hours, reschedule_min_hours, booking_min_hours, whatsapp_number
+            cancel_min_hours, reschedule_min_hours, booking_min_hours, whatsapp_number, policy_unit
      FROM psicologos WHERE id = ?`,
   )
     .bind(psychologistId)
@@ -120,7 +130,7 @@ authRouter.post('/login', async (c) => {
 
   const psych = await c.env.DB.prepare(
     `SELECT id, nombre as name, email, password_hash, session_duration_minutes,
-            cancel_min_hours, reschedule_min_hours, booking_min_hours, whatsapp_number
+            cancel_min_hours, reschedule_min_hours, booking_min_hours, whatsapp_number, policy_unit
      FROM psicologos WHERE email = ?`,
   )
     .bind(email)
@@ -154,6 +164,7 @@ authRouter.post('/login', async (c) => {
         reschedule_min_hours: psych.reschedule_min_hours,
         booking_min_hours: psych.booking_min_hours,
         whatsapp_number: psych.whatsapp_number,
+        policy_unit: psych.policy_unit ?? 'hours',
       },
     },
   });

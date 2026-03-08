@@ -29,7 +29,14 @@ type PolicyRow = {
   booking_min_hours: number;
   whatsapp_number: string | null;
   nombre: string;
+  policy_unit: 'minutes' | 'hours' | 'days';
 };
+
+function toHours(value: number, unit: 'minutes' | 'hours' | 'days'): number {
+  if (unit === 'minutes') return value / 60;
+  if (unit === 'days') return value * 24;
+  return value;
+}
 
 function hoursUntilSlot(fecha: string, horaInicio: string): number {
   const slotMs = new Date(`${fecha}T${horaInicio}:00-03:00`).getTime();
@@ -150,14 +157,16 @@ bookingsRouter.post('/', async (c) => {
 
   if (!isPsychologist) {
     const policy = await c.env.DB.prepare(
-      'SELECT booking_min_hours, whatsapp_number, nombre FROM psicologos WHERE id = ?',
-    ).bind(slot.psicologo_id).first<Pick<PolicyRow, 'booking_min_hours' | 'whatsapp_number' | 'nombre'>>();
+      'SELECT booking_min_hours, whatsapp_number, nombre, policy_unit FROM psicologos WHERE id = ?',
+    ).bind(slot.psicologo_id).first<Pick<PolicyRow, 'booking_min_hours' | 'whatsapp_number' | 'nombre' | 'policy_unit'>>();
 
     const booking_min_hours = policy?.booking_min_hours ?? 24;
-    const hours = hoursUntilSlot(slot.fecha, slot.hora_inicio);
-    const slotISO = new Date(`${slot.fecha}T${slot.hora_inicio}:00-03:00`).toISOString();
-    console.error(`[POST /bookings] slotISO=${slotISO} nowISO=${new Date().toISOString()} hours=${hours.toFixed(2)} booking_min_hours=${booking_min_hours}`);
-    if (booking_min_hours > 0 && hours < booking_min_hours) {
+    const unit = policy?.policy_unit ?? 'hours';
+    const thresholdHours = toHours(booking_min_hours, unit);
+    const slotDatetime = new Date(`${slot.fecha}T${slot.hora_inicio}:00-03:00`);
+    const diffHours = (slotDatetime.getTime() - Date.now()) / (1000 * 60 * 60);
+    console.log('[policy]', { slotDatetime, now: new Date(), diffHours, policy: booking_min_hours, unit, thresholdHours });
+    if (thresholdHours > 0 && diffHours < thresholdHours) {
       return c.json({ success: true, data: bookingData, warning: 'outside_policy', policy_hours: booking_min_hours, psychologist_name: policy?.nombre ?? '' }, 201);
     }
   }
@@ -266,14 +275,15 @@ bookingsRouter.patch('/:id', async (c) => {
 
   // 2b. Check reschedule policy against the ORIGINAL slot's datetime
   const reschPolicy = await c.env.DB.prepare(
-    'SELECT reschedule_min_hours, whatsapp_number, nombre FROM psicologos WHERE id = ?',
-  ).bind(oldBooking.psicologo_id).first<Pick<PolicyRow, 'reschedule_min_hours' | 'whatsapp_number' | 'nombre'>>();
+    'SELECT reschedule_min_hours, whatsapp_number, nombre, policy_unit FROM psicologos WHERE id = ?',
+  ).bind(oldBooking.psicologo_id).first<Pick<PolicyRow, 'reschedule_min_hours' | 'whatsapp_number' | 'nombre' | 'policy_unit'>>();
 
   const reschedule_min_hours = reschPolicy?.reschedule_min_hours ?? 48;
+  const reschUnit = reschPolicy?.policy_unit ?? 'hours';
+  const reschThresholdHours = toHours(reschedule_min_hours, reschUnit);
   const reschHours = hoursUntilSlot(oldBooking.fecha, oldBooking.hora_inicio);
-  const reschSlotISO = new Date(`${oldBooking.fecha}T${oldBooking.hora_inicio}:00-03:00`).toISOString();
-  console.error(`[PATCH /bookings/:id] slotISO=${reschSlotISO} nowISO=${new Date().toISOString()} hours=${reschHours.toFixed(2)} reschedule_min_hours=${reschedule_min_hours} whatsapp=${reschPolicy?.whatsapp_number}`);
-  if (reschedule_min_hours > 0 && reschHours < reschedule_min_hours) {
+  console.log('[policy]', { action: 'reschedule', reschHours, policy: reschedule_min_hours, unit: reschUnit, thresholdHours: reschThresholdHours });
+  if (reschThresholdHours > 0 && reschHours < reschThresholdHours) {
     return c.json({
       success: false,
       error: 'outside_policy',
@@ -364,14 +374,15 @@ bookingsRouter.delete('/:id', async (c) => {
 
   // Check cancel policy
   const policy = await c.env.DB.prepare(
-    'SELECT cancel_min_hours, whatsapp_number, nombre FROM psicologos WHERE id = ?',
-  ).bind(booking.psicologo_id).first<Pick<PolicyRow, 'cancel_min_hours' | 'whatsapp_number' | 'nombre'>>();
+    'SELECT cancel_min_hours, whatsapp_number, nombre, policy_unit FROM psicologos WHERE id = ?',
+  ).bind(booking.psicologo_id).first<Pick<PolicyRow, 'cancel_min_hours' | 'whatsapp_number' | 'nombre' | 'policy_unit'>>();
 
   const cancel_min_hours = policy?.cancel_min_hours ?? 48;
+  const cancelUnit = policy?.policy_unit ?? 'hours';
+  const cancelThresholdHours = toHours(cancel_min_hours, cancelUnit);
   const cancelHours = hoursUntilSlot(booking.fecha, booking.hora_inicio);
-  const cancelSlotISO = new Date(`${booking.fecha}T${booking.hora_inicio}:00-03:00`).toISOString();
-  console.error(`[DELETE /bookings/:id] slotISO=${cancelSlotISO} nowISO=${new Date().toISOString()} hours=${cancelHours.toFixed(2)} cancel_min_hours=${cancel_min_hours} whatsapp=${policy?.whatsapp_number}`);
-  if (cancel_min_hours > 0 && cancelHours < cancel_min_hours) {
+  console.log('[policy]', { action: 'cancel', cancelHours, policy: cancel_min_hours, unit: cancelUnit, thresholdHours: cancelThresholdHours });
+  if (cancelThresholdHours > 0 && cancelHours < cancelThresholdHours) {
     return c.json({
       success: false,
       error: 'outside_policy',

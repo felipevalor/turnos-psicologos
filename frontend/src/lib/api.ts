@@ -1,4 +1,4 @@
-import type { Slot, SlotWithBooking, BookingWithSlot, BookingResult, RecurringBooking, WeeklyDaySchedule, Holiday } from './types';
+import type { Slot, SlotWithBooking, BookingWithSlot, BookingResult, RecurringBooking, WeeklyDaySchedule, Holiday, DashboardData } from './types';
 
 export type ApiResponse<T = void> = {
   success: boolean;
@@ -58,6 +58,7 @@ export const updateProfile = (data: {
   reschedule_min_hours?: number;
   booking_min_hours?: number;
   whatsapp_number?: string | null;
+  policy_unit?: 'minutes' | 'hours' | 'days';
 }) =>
   request<import('./types').Psychologist>('/auth/me', {
     method: 'PATCH',
@@ -180,3 +181,7 @@ export const rescheduleRecurring = (id: number, data: { email?: string; phone?: 
 
 export const extendRecurring = () =>
   request<{ slots_created: number; slots_skipped: number }>('/recurring/extend', { method: 'POST' });
+
+// ── Dashboard ─────────────────────────────────────────────────────────────────
+
+export const getDashboard = () => request<DashboardData>('/dashboard');

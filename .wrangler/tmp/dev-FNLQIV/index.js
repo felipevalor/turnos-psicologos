@@ -1,7 +1,7 @@
 var __defProp = Object.defineProperty;
 var __name = (target, value) => __defProp(target, "name", { value, configurable: true });
 
-// .wrangler/tmp/bundle-fA5qAi/checked-fetch.js
+// .wrangler/tmp/bundle-WAS14S/checked-fetch.js
 var urls = /* @__PURE__ */ new Set();
 function checkURL(request, init) {
   const url = request instanceof URL ? request : new URL(
@@ -2285,7 +2285,7 @@ authRouter.get("/me", authMiddleware, async (c) => {
   const psychologistId = c.get("psychologistId");
   const psych = await c.env.DB.prepare(
     `SELECT id, nombre as name, email, session_duration_minutes,
-            cancel_min_hours, reschedule_min_hours, booking_min_hours, whatsapp_number
+            cancel_min_hours, reschedule_min_hours, booking_min_hours, whatsapp_number, policy_unit
      FROM psicologos WHERE id = ?`
   ).bind(psychologistId).first();
   if (!psych) {
@@ -2301,7 +2301,7 @@ authRouter.patch("/me", authMiddleware, async (c) => {
   } catch {
     return c.json({ success: false, error: "Cuerpo JSON inv\xE1lido" }, 400);
   }
-  const { session_duration_minutes, cancel_min_hours, reschedule_min_hours, booking_min_hours, whatsapp_number } = body;
+  const { session_duration_minutes, cancel_min_hours, reschedule_min_hours, booking_min_hours, whatsapp_number, policy_unit } = body;
   if (session_duration_minutes !== void 0) {
     if (![30, 45, 50, 60].includes(session_duration_minutes)) {
       return c.json({ success: false, error: "La duraci\xF3n debe ser 30, 45, 50 o 60 minutos" }, 400);
@@ -2329,9 +2329,15 @@ authRouter.patch("/me", authMiddleware, async (c) => {
   if (whatsapp_number !== void 0) {
     await c.env.DB.prepare("UPDATE psicologos SET whatsapp_number = ? WHERE id = ?").bind(whatsapp_number, psychologistId).run();
   }
+  if (policy_unit !== void 0) {
+    if (!["minutes", "hours", "days"].includes(policy_unit)) {
+      return c.json({ success: false, error: "policy_unit debe ser minutes, hours o days" }, 400);
+    }
+    await c.env.DB.prepare("UPDATE psicologos SET policy_unit = ? WHERE id = ?").bind(policy_unit, psychologistId).run();
+  }
   const psych = await c.env.DB.prepare(
     `SELECT id, nombre as name, email, session_duration_minutes,
-            cancel_min_hours, reschedule_min_hours, booking_min_hours, whatsapp_number
+            cancel_min_hours, reschedule_min_hours, booking_min_hours, whatsapp_number, policy_unit
      FROM psicologos WHERE id = ?`
   ).bind(psychologistId).first();
   return c.json({ success: true, data: psych });
@@ -2349,7 +2355,7 @@ authRouter.post("/login", async (c) => {
   }
   const psych = await c.env.DB.prepare(
     `SELECT id, nombre as name, email, password_hash, session_duration_minutes,
-            cancel_min_hours, reschedule_min_hours, booking_min_hours, whatsapp_number
+            cancel_min_hours, reschedule_min_hours, booking_min_hours, whatsapp_number, policy_unit
      FROM psicologos WHERE email = ?`
   ).bind(email).first();
   if (!psych) {
@@ -2376,7 +2382,8 @@ authRouter.post("/login", async (c) => {
         cancel_min_hours: psych.cancel_min_hours,
         reschedule_min_hours: psych.reschedule_min_hours,
         booking_min_hours: psych.booking_min_hours,
-        whatsapp_number: psych.whatsapp_number
+        whatsapp_number: psych.whatsapp_number,
+        policy_unit: psych.policy_unit ?? "hours"
       }
     }
   });
@@ -2761,6 +2768,14 @@ slotsRouter.delete("/:id", authMiddleware, async (c) => {
 });
 
 // worker/src/routes/bookings.ts
+function toHours(value, unit) {
+  if (unit === "minutes")
+    return value / 60;
+  if (unit === "days")
+    return value * 24;
+  return value;
+}
+__name(toHours, "toHours");
 function hoursUntilSlot(fecha, horaInicio) {
   const slotMs = (/* @__PURE__ */ new Date(`${fecha}T${horaInicio}:00-03:00`)).getTime();
   return (slotMs - Date.now()) / (1e3 * 60 * 60);
@@ -2846,13 +2861,15 @@ bookingsRouter.post("/", async (c) => {
   };
   if (!isPsychologist) {
     const policy = await c.env.DB.prepare(
-      "SELECT booking_min_hours, whatsapp_number, nombre FROM psicologos WHERE id = ?"
+      "SELECT booking_min_hours, whatsapp_number, nombre, policy_unit FROM psicologos WHERE id = ?"
     ).bind(slot.psicologo_id).first();
     const booking_min_hours = policy?.booking_min_hours ?? 24;
-    const hours = hoursUntilSlot(slot.fecha, slot.hora_inicio);
-    const slotISO = (/* @__PURE__ */ new Date(`${slot.fecha}T${slot.hora_inicio}:00-03:00`)).toISOString();
-    console.error(`[POST /bookings] slotISO=${slotISO} nowISO=${(/* @__PURE__ */ new Date()).toISOString()} hours=${hours.toFixed(2)} booking_min_hours=${booking_min_hours}`);
-    if (booking_min_hours > 0 && hours < booking_min_hours) {
+    const unit = policy?.policy_unit ?? "hours";
+    const thresholdHours = toHours(booking_min_hours, unit);
+    const slotDatetime = /* @__PURE__ */ new Date(`${slot.fecha}T${slot.hora_inicio}:00-03:00`);
+    const diffHours = (slotDatetime.getTime() - Date.now()) / (1e3 * 60 * 60);
+    console.log("[policy]", { slotDatetime, now: /* @__PURE__ */ new Date(), diffHours, policy: booking_min_hours, unit, thresholdHours });
+    if (thresholdHours > 0 && diffHours < thresholdHours) {
       return c.json({ success: true, data: bookingData, warning: "outside_policy", policy_hours: booking_min_hours, psychologist_name: policy?.nombre ?? "" }, 201);
     }
   }
@@ -2943,13 +2960,14 @@ bookingsRouter.patch("/:id", async (c) => {
     return c.json({ success: false, error: "Este turno ya no est\xE1 disponible, por favor eleg\xED otro" }, 409);
   }
   const reschPolicy = await c.env.DB.prepare(
-    "SELECT reschedule_min_hours, whatsapp_number, nombre FROM psicologos WHERE id = ?"
+    "SELECT reschedule_min_hours, whatsapp_number, nombre, policy_unit FROM psicologos WHERE id = ?"
   ).bind(oldBooking.psicologo_id).first();
   const reschedule_min_hours = reschPolicy?.reschedule_min_hours ?? 48;
+  const reschUnit = reschPolicy?.policy_unit ?? "hours";
+  const reschThresholdHours = toHours(reschedule_min_hours, reschUnit);
   const reschHours = hoursUntilSlot(oldBooking.fecha, oldBooking.hora_inicio);
-  const reschSlotISO = (/* @__PURE__ */ new Date(`${oldBooking.fecha}T${oldBooking.hora_inicio}:00-03:00`)).toISOString();
-  console.error(`[PATCH /bookings/:id] slotISO=${reschSlotISO} nowISO=${(/* @__PURE__ */ new Date()).toISOString()} hours=${reschHours.toFixed(2)} reschedule_min_hours=${reschedule_min_hours} whatsapp=${reschPolicy?.whatsapp_number}`);
-  if (reschedule_min_hours > 0 && reschHours < reschedule_min_hours) {
+  console.log("[policy]", { action: "reschedule", reschHours, policy: reschedule_min_hours, unit: reschUnit, thresholdHours: reschThresholdHours });
+  if (reschThresholdHours > 0 && reschHours < reschThresholdHours) {
     return c.json({
       success: false,
       error: "outside_policy",
@@ -3021,13 +3039,14 @@ bookingsRouter.delete("/:id", async (c) => {
     return c.json({ success: false, error: "Datos de verificaci\xF3n incorrectos" }, 403);
   }
   const policy = await c.env.DB.prepare(
-    "SELECT cancel_min_hours, whatsapp_number, nombre FROM psicologos WHERE id = ?"
+    "SELECT cancel_min_hours, whatsapp_number, nombre, policy_unit FROM psicologos WHERE id = ?"
   ).bind(booking.psicologo_id).first();
   const cancel_min_hours = policy?.cancel_min_hours ?? 48;
+  const cancelUnit = policy?.policy_unit ?? "hours";
+  const cancelThresholdHours = toHours(cancel_min_hours, cancelUnit);
   const cancelHours = hoursUntilSlot(booking.fecha, booking.hora_inicio);
-  const cancelSlotISO = (/* @__PURE__ */ new Date(`${booking.fecha}T${booking.hora_inicio}:00-03:00`)).toISOString();
-  console.error(`[DELETE /bookings/:id] slotISO=${cancelSlotISO} nowISO=${(/* @__PURE__ */ new Date()).toISOString()} hours=${cancelHours.toFixed(2)} cancel_min_hours=${cancel_min_hours} whatsapp=${policy?.whatsapp_number}`);
-  if (cancel_min_hours > 0 && cancelHours < cancel_min_hours) {
+  console.log("[policy]", { action: "cancel", cancelHours, policy: cancel_min_hours, unit: cancelUnit, thresholdHours: cancelThresholdHours });
+  if (cancelThresholdHours > 0 && cancelHours < cancelThresholdHours) {
     return c.json({
       success: false,
       error: "outside_policy",
@@ -3415,6 +3434,148 @@ scheduleRouter.put("/", authMiddleware, async (c) => {
   }
 });
 
+// worker/src/routes/dashboard.ts
+var dashboardRouter = new Hono2();
+function baDateStr() {
+  const d = new Date(Date.now() - 3 * 60 * 60 * 1e3);
+  return d.toISOString().split("T")[0];
+}
+__name(baDateStr, "baDateStr");
+function baTimeStr() {
+  const d = new Date(Date.now() - 3 * 60 * 60 * 1e3);
+  return d.toISOString().substring(11, 16);
+}
+__name(baTimeStr, "baTimeStr");
+function addDays2(dateStr, days) {
+  const [y, m, d] = dateStr.split("-").map(Number);
+  const dt = new Date(y, m - 1, d + days);
+  return `${dt.getFullYear()}-${String(dt.getMonth() + 1).padStart(2, "0")}-${String(dt.getDate()).padStart(2, "0")}`;
+}
+__name(addDays2, "addDays");
+function getWeekRange(dateStr) {
+  const [y, m, d] = dateStr.split("-").map(Number);
+  const dt = new Date(y, m - 1, d);
+  const day = dt.getDay();
+  const mondayOffset = day === 0 ? -6 : 1 - day;
+  const mon = new Date(y, m - 1, d + mondayOffset);
+  const sun = new Date(y, m - 1, d + mondayOffset + 6);
+  const fmt = /* @__PURE__ */ __name((x) => `${x.getFullYear()}-${String(x.getMonth() + 1).padStart(2, "0")}-${String(x.getDate()).padStart(2, "0")}`, "fmt");
+  return { start: fmt(mon), end: fmt(sun) };
+}
+__name(getWeekRange, "getWeekRange");
+function getMonthRange(dateStr) {
+  const [y, m] = dateStr.split("-").map(Number);
+  const lastDay = new Date(y, m, 0).getDate();
+  return {
+    start: `${y}-${String(m).padStart(2, "0")}-01`,
+    end: `${y}-${String(m).padStart(2, "0")}-${String(lastDay).padStart(2, "0")}`
+  };
+}
+__name(getMonthRange, "getMonthRange");
+function prevMonthStart(dateStr) {
+  const [y, m] = dateStr.split("-").map(Number);
+  return m === 1 ? `${y - 1}-12-01` : `${y}-${String(m - 1).padStart(2, "0")}-01`;
+}
+__name(prevMonthStart, "prevMonthStart");
+dashboardRouter.get("/", authMiddleware, async (c) => {
+  const psychologistId = c.get("psychologistId");
+  const today = baDateStr();
+  const nowTime = baTimeStr();
+  const weekCur = getWeekRange(today);
+  const weekPrev = { start: addDays2(weekCur.start, -7), end: addDays2(weekCur.end, -7) };
+  const monthCur = getMonthRange(today);
+  const monthPrev = getMonthRange(prevMonthStart(today));
+  const [
+    todaySessions,
+    weekTotal,
+    weekBooked,
+    prevWeekTotal,
+    prevWeekBooked,
+    monthTotal,
+    monthBooked,
+    prevMonthTotal,
+    prevMonthBooked,
+    activePatients,
+    newPatients
+  ] = await Promise.all([
+    c.env.DB.prepare(`
+      SELECT r.id, s.hora_inicio, s.hora_fin,
+             r.paciente_nombre as patient_name, r.paciente_email as patient_email
+      FROM reservas r JOIN slots s ON s.id = r.slot_id
+      WHERE s.psicologo_id = ? AND s.fecha = ? AND s.hora_inicio >= ?
+      ORDER BY s.hora_inicio
+    `).bind(psychologistId, today, nowTime).all(),
+    c.env.DB.prepare(`SELECT COUNT(*) as cnt FROM slots WHERE psicologo_id = ? AND fecha >= ? AND fecha <= ?`).bind(psychologistId, weekCur.start, weekCur.end).first(),
+    c.env.DB.prepare(`SELECT COUNT(*) as cnt FROM slots s JOIN reservas r ON r.slot_id = s.id WHERE s.psicologo_id = ? AND s.fecha >= ? AND s.fecha <= ?`).bind(psychologistId, weekCur.start, weekCur.end).first(),
+    c.env.DB.prepare(`SELECT COUNT(*) as cnt FROM slots WHERE psicologo_id = ? AND fecha >= ? AND fecha <= ?`).bind(psychologistId, weekPrev.start, weekPrev.end).first(),
+    c.env.DB.prepare(`SELECT COUNT(*) as cnt FROM slots s JOIN reservas r ON r.slot_id = s.id WHERE s.psicologo_id = ? AND s.fecha >= ? AND s.fecha <= ?`).bind(psychologistId, weekPrev.start, weekPrev.end).first(),
+    c.env.DB.prepare(`SELECT COUNT(*) as cnt FROM slots WHERE psicologo_id = ? AND fecha >= ? AND fecha <= ?`).bind(psychologistId, monthCur.start, monthCur.end).first(),
+    c.env.DB.prepare(`SELECT COUNT(*) as cnt FROM slots s JOIN reservas r ON r.slot_id = s.id WHERE s.psicologo_id = ? AND s.fecha >= ? AND s.fecha <= ?`).bind(psychologistId, monthCur.start, monthCur.end).first(),
+    c.env.DB.prepare(`SELECT COUNT(*) as cnt FROM slots WHERE psicologo_id = ? AND fecha >= ? AND fecha <= ?`).bind(psychologistId, monthPrev.start, monthPrev.end).first(),
+    c.env.DB.prepare(`SELECT COUNT(*) as cnt FROM slots s JOIN reservas r ON r.slot_id = s.id WHERE s.psicologo_id = ? AND s.fecha >= ? AND s.fecha <= ?`).bind(psychologistId, monthPrev.start, monthPrev.end).first(),
+    c.env.DB.prepare(`
+      SELECT COUNT(DISTINCT r.paciente_email) as cnt
+      FROM reservas r JOIN slots s ON s.id = r.slot_id
+      WHERE s.psicologo_id = ? AND s.fecha >= ?
+    `).bind(psychologistId, today).first(),
+    c.env.DB.prepare(`
+      SELECT COUNT(*) as cnt FROM (
+        SELECT r.paciente_email, MIN(s.fecha) as first_session
+        FROM reservas r JOIN slots s ON s.id = r.slot_id
+        WHERE s.psicologo_id = ?
+        GROUP BY r.paciente_email
+        HAVING first_session >= ? AND first_session <= ?
+      )
+    `).bind(psychologistId, monthCur.start, monthCur.end).first()
+  ]);
+  const wT = weekTotal?.cnt ?? 0;
+  const wB = weekBooked?.cnt ?? 0;
+  const pwT = prevWeekTotal?.cnt ?? 0;
+  const pwB = prevWeekBooked?.cnt ?? 0;
+  const mT = monthTotal?.cnt ?? 0;
+  const mB = monthBooked?.cnt ?? 0;
+  const pmT = prevMonthTotal?.cnt ?? 0;
+  const pmB = prevMonthBooked?.cnt ?? 0;
+  return c.json({
+    success: true,
+    data: {
+      today: {
+        date: today,
+        upcoming_sessions: todaySessions.results
+      },
+      week: {
+        total_slots: wT,
+        booked_slots: wB,
+        occupancy_pct: wT > 0 ? Math.round(wB / wT * 100) : 0,
+        cancelled: 0,
+        // TODO: add cancellation tracking table
+        prev_total_slots: pwT,
+        prev_booked_slots: pwB,
+        prev_occupancy_pct: pwT > 0 ? Math.round(pwB / pwT * 100) : 0
+      },
+      month: {
+        total_slots: mT,
+        booked_slots: mB,
+        occupancy_pct: mT > 0 ? Math.round(mB / mT * 100) : 0,
+        new_sessions: mB,
+        cancelled: 0,
+        // TODO: add cancellation tracking table
+        cancellation_rate_pct: 0,
+        // TODO: add cancellation tracking table
+        prev_total_slots: pmT,
+        prev_booked_slots: pmB,
+        prev_occupancy_pct: pmT > 0 ? Math.round(pmB / pmT * 100) : 0,
+        prev_cancelled: 0
+        // TODO: add cancellation tracking table
+      },
+      patients: {
+        active: activePatients?.cnt ?? 0,
+        new_this_month: newPatients?.cnt ?? 0
+      }
+    }
+  });
+});
+
 // worker/src/index.ts
 var app = new Hono2();
 app.use("*", async (c, next) => {
@@ -3431,6 +3592,7 @@ app.use(
   })
 );
 app.route("/api/auth", authRouter);
+app.route("/api/dashboard", dashboardRouter);
 app.route("/api/slots", slotsRouter);
 app.route("/api/bookings", bookingsRouter);
 app.route("/api/recurring", recurringRouter);
@@ -3467,7 +3629,7 @@ var drainBody = /* @__PURE__ */ __name(async (request, env, _ctx, middlewareCtx)
 }, "drainBody");
 var middleware_ensure_req_body_drained_default = drainBody;
 
-// .wrangler/tmp/bundle-fA5qAi/middleware-insertion-facade.js
+// .wrangler/tmp/bundle-WAS14S/middleware-insertion-facade.js
 var __INTERNAL_WRANGLER_MIDDLEWARE__ = [
   middleware_ensure_req_body_drained_default
 ];
@@ -3498,7 +3660,7 @@ function __facade_invoke__(request, env, ctx, dispatch, finalMiddleware) {
 }
 __name(__facade_invoke__, "__facade_invoke__");
 
-// .wrangler/tmp/bundle-fA5qAi/middleware-loader.entry.ts
+// .wrangler/tmp/bundle-WAS14S/middleware-loader.entry.ts
 var __Facade_ScheduledController__ = class {
   constructor(scheduledTime, cron, noRetry) {
     this.scheduledTime = scheduledTime;

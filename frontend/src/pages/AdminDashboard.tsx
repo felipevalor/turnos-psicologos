@@ -19,10 +19,11 @@ import {
   getHolidays,
   addHolidayOverride,
   removeHolidayOverride,
+  getDashboard,
 } from '../lib/api';
-import type { Psychologist, SlotWithBooking, BookingWithSlot, RecurringBooking, WeeklyDaySchedule, Holiday } from '../lib/types';
+import type { Psychologist, SlotWithBooking, BookingWithSlot, RecurringBooking, WeeklyDaySchedule, Holiday, DashboardData } from '../lib/types';
 
-type Tab = 'agenda' | 'create' | 'bookings' | 'recurring' | 'settings';
+type Tab = 'dashboard' | 'agenda' | 'create' | 'bookings' | 'recurring' | 'settings';
 
 const DAY_FULL = ['Domingo', 'Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado'];
 
@@ -87,6 +88,15 @@ interface Props {
 
 const TAB_ITEMS: { id: Tab; label: string; icon: React.ReactNode }[] = [
   {
+    id: 'dashboard',
+    label: 'Inicio',
+    icon: (
+      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" />
+      </svg>
+    ),
+  },
+  {
     id: 'agenda',
     label: 'Agenda',
     icon: (
@@ -136,7 +146,9 @@ const TAB_ITEMS: { id: Tab; label: string; icon: React.ReactNode }[] = [
 
 export function AdminDashboard({ psychologist, onLogout }: Props) {
   const today = new Date().toISOString().split('T')[0];
-  const [tab, setTab] = useState<Tab>('agenda');
+  const [tab, setTab] = useState<Tab>('dashboard');
+  const [dashboardData, setDashboardData] = useState<DashboardData | null>(null);
+  const [loadingDashboard, setLoadingDashboard] = useState(false);
   const [agendaView, setAgendaView] = useState<'dia' | 'semana' | 'mes'>('semana');
   const [weekRef, setWeekRef] = useState(new Date());
   const [monthRef, setMonthRef] = useState(() => { const d = new Date(); d.setDate(1); d.setHours(0,0,0,0); return d; });
@@ -164,6 +176,7 @@ export function AdminDashboard({ psychologist, onLogout }: Props) {
   const [cancelMinHours, setCancelMinHours] = useState(psychologist.cancel_min_hours ?? 48);
   const [rescheduleMinHours, setRescheduleMinHours] = useState(psychologist.reschedule_min_hours ?? 48);
   const [bookingMinHours, setBookingMinHours] = useState(psychologist.booking_min_hours ?? 24);
+  const [policyUnit, setPolicyUnit] = useState<'minutes' | 'hours' | 'days'>(psychologist.policy_unit ?? 'hours');
   const [whatsappNumber, setWhatsappNumber] = useState(psychologist.whatsapp_number ?? '');
   const [policiesSuccess, setPoliciesSuccess] = useState('');
   const [policiesError, setPoliciesError] = useState('');
@@ -237,6 +250,13 @@ export function AdminDashboard({ psychologist, onLogout }: Props) {
   }, []);
 
   useEffect(() => {
+    if (tab === 'dashboard') {
+      setLoadingDashboard(true);
+      getDashboard().then(res => {
+        setLoadingDashboard(false);
+        if (res.success && res.data) setDashboardData(res.data);
+      });
+    }
     if (tab === 'bookings') loadBookings();
     if (tab === 'recurring') loadRecurring();
     if (tab === 'settings') {
@@ -247,6 +267,7 @@ export function AdminDashboard({ psychologist, onLogout }: Props) {
           setRescheduleMinHours(res.data.reschedule_min_hours ?? 48);
           setBookingMinHours(res.data.booking_min_hours ?? 24);
           setWhatsappNumber(res.data.whatsapp_number ?? '');
+          setPolicyUnit(res.data.policy_unit ?? 'hours');
         }
       });
       loadScheduleData();
@@ -343,6 +364,7 @@ export function AdminDashboard({ psychologist, onLogout }: Props) {
       reschedule_min_hours: rescheduleMinHours,
       booking_min_hours: bookingMinHours,
       whatsapp_number: whatsappNumber || null,
+      policy_unit: policyUnit,
     });
     if (res.success) setPoliciesSuccess('Políticas guardadas correctamente.');
     else setPoliciesError(res.error ?? 'Error al guardar políticas');
@@ -505,6 +527,139 @@ export function AdminDashboard({ psychologist, onLogout }: Props) {
             {actionError}
           </div>
         )}
+
+        {/* ── DASHBOARD TAB ──────────────────────────────── */}
+        {tab === 'dashboard' && (() => {
+          const MONTH_ES = ['enero','febrero','marzo','abril','mayo','junio','julio','agosto','septiembre','octubre','noviembre','diciembre'];
+          const nowDate = new Date();
+          const curMonthName = MONTH_ES[nowDate.getMonth()].charAt(0).toUpperCase() + MONTH_ES[nowDate.getMonth()].slice(1);
+
+          const DiffBadge = ({ cur, prev, suffix = '%' }: { cur: number; prev: number; suffix?: string }) => {
+            if (prev === 0 && cur === 0) return null;
+            const diff = cur - prev;
+            if (diff === 0) return null;
+            const positive = diff > 0;
+            return (
+              <span className={`inline-flex items-center gap-0.5 text-xs font-bold px-2 py-0.5 rounded-full ${positive ? 'bg-[#4caf7d]/15 text-[#1e6e44]' : 'bg-red-100 text-red-600'}`}>
+                {positive ? '↑' : '↓'} {positive ? '+' : ''}{diff}{suffix}
+              </span>
+            );
+          };
+
+          const OccupancyBar = ({ pct }: { pct: number }) => (
+            <div className="w-full h-2 bg-slate-100 rounded-full overflow-hidden mt-2">
+              <div
+                className="h-full rounded-full bg-[#1a2e4a] transition-all"
+                style={{ width: `${Math.min(pct, 100)}%` }}
+              />
+            </div>
+          );
+
+          if (loadingDashboard || !dashboardData) {
+            return (
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 animate-pulse">
+                {[1,2,3,4,5].map(i => (
+                  <div key={i} className="bg-white rounded-2xl border border-slate-100 p-5 h-32" />
+                ))}
+              </div>
+            );
+          }
+
+          const { today: todayData, week, month, patients } = dashboardData;
+
+          return (
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+
+              {/* Card 1 — Hoy */}
+              <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-5 sm:col-span-2">
+                <div className="flex items-center justify-between mb-3">
+                  <h3 className="text-sm font-bold text-slate-500 uppercase tracking-wide">Sesiones de hoy</h3>
+                  <span className="text-xs text-slate-400">{formatDateLong(todayData.date)}</span>
+                </div>
+                {todayData.upcoming_sessions.length === 0 ? (
+                  <p className="text-slate-400 text-sm">No hay sesiones para hoy</p>
+                ) : (
+                  <div className="divide-y divide-slate-50">
+                    {todayData.upcoming_sessions.map(s => (
+                      <div key={s.id} className="py-2.5 flex items-center gap-3">
+                        <span className="text-base font-bold text-[#1a2e4a] w-12 flex-none">{s.hora_inicio}</span>
+                        <div className="flex-1 min-w-0">
+                          <p className="text-sm font-semibold text-slate-700 truncate">{s.patient_name}</p>
+                          <p className="text-xs text-slate-400 truncate">{s.patient_email}</p>
+                        </div>
+                        <span className="text-xs text-slate-400 flex-none">{s.hora_fin}</span>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+
+              {/* Card 2 — Ocupación semanal */}
+              <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-5">
+                <h3 className="text-sm font-bold text-slate-500 uppercase tracking-wide mb-3">Semana actual</h3>
+                <div className="flex items-end gap-3">
+                  <span className="text-4xl font-bold text-[#1a2e4a] leading-none">{week.occupancy_pct}%</span>
+                  <DiffBadge cur={week.occupancy_pct} prev={week.prev_occupancy_pct} />
+                </div>
+                <p className="text-sm text-slate-400 mt-1">{week.booked_slots} de {week.total_slots} slots ocupados</p>
+                <OccupancyBar pct={week.occupancy_pct} />
+                <p className="text-xs text-slate-300 mt-1">Semana anterior: {week.prev_occupancy_pct}%</p>
+              </div>
+
+              {/* Card 3 — Ocupación mensual */}
+              <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-5">
+                <h3 className="text-sm font-bold text-slate-500 uppercase tracking-wide mb-3">{curMonthName}</h3>
+                <div className="flex items-end gap-3">
+                  <span className="text-4xl font-bold text-[#1a2e4a] leading-none">{month.occupancy_pct}%</span>
+                  <DiffBadge cur={month.occupancy_pct} prev={month.prev_occupancy_pct} />
+                </div>
+                <p className="text-sm text-slate-400 mt-1">{month.booked_slots} de {month.total_slots} slots ocupados</p>
+                <OccupancyBar pct={month.occupancy_pct} />
+                <p className="text-xs text-slate-300 mt-1">Mes anterior: {month.prev_occupancy_pct}%</p>
+              </div>
+
+              {/* Card 4 — Sesiones del mes */}
+              <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-5">
+                <h3 className="text-sm font-bold text-slate-500 uppercase tracking-wide mb-3">Sesiones del mes</h3>
+                <div className="flex items-end gap-3">
+                  <span className="text-4xl font-bold text-[#1a2e4a] leading-none">{month.new_sessions}</span>
+                  <DiffBadge cur={month.new_sessions} prev={month.prev_booked_slots} suffix=" sesiones" />
+                </div>
+                <p className="text-sm text-slate-400 mt-1">
+                  {month.cancelled > 0
+                    ? `${month.cancelled} canceladas · ${month.cancellation_rate_pct}% tasa de cancelación`
+                    : 'Sin cancelaciones registradas'}
+                </p>
+              </div>
+
+              {/* Card 5 — Pacientes */}
+              <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-5">
+                <h3 className="text-sm font-bold text-slate-500 uppercase tracking-wide mb-3">Pacientes</h3>
+                <div className="flex gap-6">
+                  <div>
+                    <div className="flex items-center gap-2 mb-0.5">
+                      <svg className="w-4 h-4 text-[#1a2e4a]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+                      </svg>
+                      <span className="text-3xl font-bold text-[#1a2e4a]">{patients.active}</span>
+                    </div>
+                    <p className="text-sm text-slate-400">activos</p>
+                  </div>
+                  <div>
+                    <div className="flex items-center gap-2 mb-0.5">
+                      <svg className="w-4 h-4 text-[#4caf7d]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11.049 2.927c.3-.921 1.603-.921 1.902 0l1.519 4.674a1 1 0 00.95.69h4.915c.969 0 1.371 1.24.588 1.81l-3.976 2.888a1 1 0 00-.363 1.118l1.518 4.674c.3.922-.755 1.688-1.538 1.118l-3.976-2.888a1 1 0 00-1.176 0l-3.976 2.888c-.783.57-1.838-.197-1.538-1.118l1.518-4.674a1 1 0 00-.363-1.118l-3.976-2.888c-.784-.57-.38-1.81.588-1.81h4.914a1 1 0 00.951-.69l1.519-4.674z" />
+                      </svg>
+                      <span className="text-3xl font-bold text-[#4caf7d]">{patients.new_this_month}</span>
+                    </div>
+                    <p className="text-sm text-slate-400">nuevos este mes</p>
+                  </div>
+                </div>
+              </div>
+
+            </div>
+          );
+        })()}
 
         {/* ── AGENDA TAB ─────────────────────────────────── */}
         {tab === 'agenda' && (() => {
@@ -1003,29 +1158,53 @@ export function AdminDashboard({ psychologist, onLogout }: Props) {
               <h2 className="text-base font-bold text-[#1a2e4a] mb-1">Políticas de autogestión</h2>
               <p className="text-xs text-slate-400 mb-4">Tiempo mínimo de anticipación que deben respetar los pacientes.</p>
               <form onSubmit={handleSavePolicies} className="space-y-4 max-w-lg">
+                {/* Unit selector */}
+                <div className="flex items-center gap-3">
+                  <span className="text-sm font-semibold text-slate-700">Unidad:</span>
+                  <div className="flex items-center bg-slate-100 rounded-lg p-0.5 text-xs font-semibold">
+                    {(['minutes', 'hours', 'days'] as const).map(u => (
+                      <button
+                        key={u}
+                        type="button"
+                        onClick={() => setPolicyUnit(u)}
+                        className={`px-3 py-1.5 rounded-md transition-colors ${
+                          policyUnit === u ? 'bg-white text-[#1a2e4a] shadow-sm' : 'text-slate-500 hover:text-slate-700'
+                        }`}
+                      >
+                        {u === 'minutes' ? 'Minutos' : u === 'hours' ? 'Horas' : 'Días'}
+                      </button>
+                    ))}
+                  </div>
+                </div>
                 <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                   <div>
-                    <label className="block text-sm font-semibold text-slate-700 mb-1.5">Cancelación (hs)</label>
+                    <label className="block text-sm font-semibold text-slate-700 mb-1.5">
+                      Cancelación ({policyUnit === 'minutes' ? 'min' : policyUnit === 'hours' ? 'hs' : 'días'})
+                    </label>
                     <input
-                      type="number" min={0} max={168} step={0.5} required
+                      type="number" min={0} max={policyUnit === 'minutes' ? 10080 : policyUnit === 'days' ? 7 : 168} step={policyUnit === 'minutes' ? 1 : 0.5} required
                       value={cancelMinHours}
                       onChange={(e) => setCancelMinHours(parseFloat(e.target.value))}
                       className="w-full border border-slate-200 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-[#1a2e4a]/20"
                     />
                   </div>
                   <div>
-                    <label className="block text-sm font-semibold text-slate-700 mb-1.5">Reagendamiento (hs)</label>
+                    <label className="block text-sm font-semibold text-slate-700 mb-1.5">
+                      Reagendamiento ({policyUnit === 'minutes' ? 'min' : policyUnit === 'hours' ? 'hs' : 'días'})
+                    </label>
                     <input
-                      type="number" min={0} max={168} step={0.5} required
+                      type="number" min={0} max={policyUnit === 'minutes' ? 10080 : policyUnit === 'days' ? 7 : 168} step={policyUnit === 'minutes' ? 1 : 0.5} required
                       value={rescheduleMinHours}
                       onChange={(e) => setRescheduleMinHours(parseFloat(e.target.value))}
                       className="w-full border border-slate-200 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-[#1a2e4a]/20"
                     />
                   </div>
                   <div>
-                    <label className="block text-sm font-semibold text-slate-700 mb-1.5">Nueva sesión (hs)</label>
+                    <label className="block text-sm font-semibold text-slate-700 mb-1.5">
+                      Nueva sesión ({policyUnit === 'minutes' ? 'min' : policyUnit === 'hours' ? 'hs' : 'días'})
+                    </label>
                     <input
-                      type="number" min={0} max={168} step={0.5} required
+                      type="number" min={0} max={policyUnit === 'minutes' ? 10080 : policyUnit === 'days' ? 7 : 168} step={policyUnit === 'minutes' ? 1 : 0.5} required
                       value={bookingMinHours}
                       onChange={(e) => setBookingMinHours(parseFloat(e.target.value))}
                       className="w-full border border-slate-200 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-[#1a2e4a]/20"
