@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { createSlot, createBatchSlots } from '../lib/api';
+import { getTodayDateString } from '../lib/date';
 
 const DAY_NAMES = ['Dom', 'Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb'];
 
@@ -24,7 +25,7 @@ export function SlotForm({ onCreated, sessionDuration }: Props) {
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
 
-  const today = new Date().toISOString().split('T')[0];
+  const today = getTodayDateString();
 
   const toggleDay = (day: number) => {
     setSelectedDays(prev => prev.includes(day) ? prev.filter(d => d !== day) : [...prev, day]);
@@ -77,17 +78,15 @@ export function SlotForm({ onCreated, sessionDuration }: Props) {
       <div className="flex gap-2 mb-5 bg-slate-100 p-1 rounded-xl">
         <button
           onClick={() => setMode('single')}
-          className={`flex-1 py-2 rounded-lg text-sm font-semibold transition-colors ${
-            mode === 'single' ? 'bg-white text-[#1a2e4a] shadow-sm' : 'text-slate-500'
-          }`}
+          className={`flex-1 py-2 rounded-lg text-sm font-semibold transition-colors ${mode === 'single' ? 'bg-white text-[#1a2e4a] shadow-sm' : 'text-slate-500'
+            }`}
         >
           Individual
         </button>
         <button
           onClick={() => setMode('batch')}
-          className={`flex-1 py-2 rounded-lg text-sm font-semibold transition-colors ${
-            mode === 'batch' ? 'bg-white text-[#1a2e4a] shadow-sm' : 'text-slate-500'
-          }`}
+          className={`flex-1 py-2 rounded-lg text-sm font-semibold transition-colors ${mode === 'batch' ? 'bg-white text-[#1a2e4a] shadow-sm' : 'text-slate-500'
+            }`}
         >
           En lote
         </button>
@@ -162,11 +161,10 @@ export function SlotForm({ onCreated, sessionDuration }: Props) {
                   key={i}
                   type="button"
                   onClick={() => toggleDay(i)}
-                  className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors ${
-                    selectedDays.includes(i)
-                      ? 'bg-[#1a2e4a] text-white'
-                      : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
-                  }`}
+                  className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors ${selectedDays.includes(i)
+                    ? 'bg-[#1a2e4a] text-white'
+                    : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+                    }`}
                 >
                   {name}
                 </button>
@@ -185,11 +183,10 @@ export function SlotForm({ onCreated, sessionDuration }: Props) {
 
       {message && (
         <div
-          className={`mt-4 p-3 rounded-xl text-sm ${
-            message.type === 'success'
-              ? 'bg-[#4caf7d]/10 text-[#1e6e44] border border-[#4caf7d]/20'
-              : 'bg-red-50 text-red-600 border border-red-200'
-          }`}
+          className={`mt-4 p-3 rounded-xl text-sm ${message.type === 'success'
+            ? 'bg-[#4caf7d]/10 text-[#1e6e44] border border-[#4caf7d]/20'
+            : 'bg-red-50 text-red-600 border border-red-200'
+            }`}
         >
           {message.text}
         </div>

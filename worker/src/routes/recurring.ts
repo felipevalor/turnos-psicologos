@@ -1,5 +1,6 @@
 import { Hono } from 'hono';
 import { authMiddleware } from '../middleware/auth';
+import { verifyJWT } from '../lib/jwt';
 import type { Env, AppVariables } from '../types';
 
 type OverlapRow = { count: number };
@@ -26,8 +27,10 @@ function addMinutes(time: string, minutes: number): string {
   return `${String(Math.floor(total / 60) % 24).padStart(2, '0')}:${String(total % 60).padStart(2, '0')}`;
 }
 
+import { getTodayDateString } from '../lib/date';
+
 function todayStr(): string {
-  return new Date().toISOString().split('T')[0];
+  return getTodayDateString();
 }
 
 function addDays(dateStr: string, days: number): string {
@@ -48,6 +51,15 @@ function isValidDate(dateStr: string): boolean {
 
 function isValidTime(timeStr: string): boolean {
   return /^\d{2}:\d{2}$/.test(timeStr);
+}
+
+function matchesRecurrence(fecha: string, startDate: string, frequencyWeeks: number): boolean {
+  if (fecha < startDate) return false;
+  const d1 = new Date(`${startDate}T12:00:00Z`);
+  const d2 = new Date(`${fecha}T12:00:00Z`);
+  const diffTime = d2.getTime() - d1.getTime();
+  const diffDays = Math.round(diffTime / (1000 * 60 * 60 * 24));
+  return diffDays % (frequencyWeeks * 7) === 0;
 }
 
 async function generateSlots(
@@ -86,44 +98,82 @@ async function generateSlots(
   console.error(`[generateSlots] recurringId=${recurringId} range=${fromDate}→${toDate} time=${time} end=${end_time} freq=${frequencyWeeks}w psychologist=${psychologistId}`);
 
   while (current <= toDate) {
-    const overlap = await db
+    // Check if a slot already exists at the exact recurrence time
+    const existingSlot = await db
       .prepare(
-        `SELECT COUNT(*) as count FROM slots
-         WHERE psicologo_id = ? AND fecha = ?
-         AND NOT (hora_fin <= ? OR hora_inicio >= ?)`,
+        `SELECT id, disponible FROM slots
+         WHERE psicologo_id = ? AND fecha = ? AND hora_inicio = ?`,
       )
-      .bind(psychologistId, current, time, end_time)
-      .first<OverlapRow>();
+      .bind(psychologistId, current, time)
+      .first<{ id: number; disponible: number }>();
 
-    if (!overlap || overlap.count === 0) {
-      try {
-        const slotResult = await db
-          .prepare(
-            `INSERT INTO slots (psicologo_id, fecha, hora_inicio, hora_fin, disponible)
-             VALUES (?, ?, ?, ?, 0)`,
-          )
-          .bind(psychologistId, current, time, end_time)
-          .run();
-
-        const slotId = slotResult.meta.last_row_id;
-        console.error(`[generateSlots] ${current}: slot created id=${slotId}`);
-
-        await db
-          .prepare(
-            `INSERT INTO reservas (slot_id, paciente_nombre, paciente_email, paciente_telefono)
-             VALUES (?, ?, ?, ?)`,
-          )
-          .bind(slotId, patientName, patientEmail, patientPhone)
-          .run();
-
-        created++;
-      } catch (err) {
-        console.error(`[generateSlots] ${current}: INSERT failed —`, err);
+    if (existingSlot) {
+      if (existingSlot.disponible === 1) {
+        // Slot is free — adopt it: insert reserva and mark unavailable
+        try {
+          await db
+            .prepare(
+              `INSERT INTO reservas (slot_id, paciente_nombre, paciente_email, paciente_telefono)
+               VALUES (?, ?, ?, ?)`,
+            )
+            .bind(existingSlot.id, patientName, patientEmail, patientPhone)
+            .run();
+          await db
+            .prepare(`UPDATE slots SET disponible = 0 WHERE id = ?`)
+            .bind(existingSlot.id)
+            .run();
+          console.error(`[generateSlots] ${current}: adopted existing slot id=${existingSlot.id}`);
+          created++;
+        } catch (err) {
+          console.error(`[generateSlots] ${current}: adopt failed —`, err);
+          skipped++;
+        }
+      } else {
+        // Slot exists but is blocked or already booked — skip
+        console.error(`[generateSlots] ${current}: skipped — slot id=${existingSlot.id} is unavailable`);
         skipped++;
       }
     } else {
-      console.error(`[generateSlots] ${current}: skipped — overlap.count=${overlap?.count}`);
-      skipped++;
+      // No slot at this time — check for overlapping slots before inserting
+      const overlap = await db
+        .prepare(
+          `SELECT COUNT(*) as count FROM slots
+           WHERE psicologo_id = ? AND fecha = ?
+           AND NOT (hora_fin <= ? OR hora_inicio >= ?)`,
+        )
+        .bind(psychologistId, current, time, end_time)
+        .first<OverlapRow>();
+
+      if (!overlap || overlap.count === 0) {
+        try {
+          const slotResult = await db
+            .prepare(
+              `INSERT INTO slots (psicologo_id, fecha, hora_inicio, hora_fin, disponible)
+               VALUES (?, ?, ?, ?, 0)`,
+            )
+            .bind(psychologistId, current, time, end_time)
+            .run();
+
+          const slotId = slotResult.meta.last_row_id;
+          console.error(`[generateSlots] ${current}: slot created id=${slotId}`);
+
+          await db
+            .prepare(
+              `INSERT INTO reservas (slot_id, paciente_nombre, paciente_email, paciente_telefono)
+               VALUES (?, ?, ?, ?)`,
+            )
+            .bind(slotId, patientName, patientEmail, patientPhone)
+            .run();
+
+          created++;
+        } catch (err) {
+          console.error(`[generateSlots] ${current}: INSERT failed —`, err);
+          skipped++;
+        }
+      } else {
+        console.error(`[generateSlots] ${current}: skipped — time conflict with another slot`);
+        skipped++;
+      }
     }
 
     current = addDays(current, frequencyWeeks * 7);
@@ -160,7 +210,7 @@ recurringRouter.post('/', authMiddleware, async (c) => {
       {
         success: false,
         error:
-          'Campos requeridos: patient_name, patient_email, patient_phone, start_date, time, frequency_weeks',
+          'Campos requeridos: nombre del paciente, email, teléfono, fecha de inicio, hora, frecuencia',
       },
       400,
     );
@@ -175,9 +225,23 @@ recurringRouter.post('/', authMiddleware, async (c) => {
     return c.json({ success: false, error: 'frequency_weeks debe ser 1, 2, 3 o 4' }, 400);
   }
 
+  // Validate start_date against weekly schedule
+  const d = new Date(`${start_date}T12:00:00Z`);
+  const dayOfWeek = d.getUTCDay();
+
+  const scheduleWindow = await c.env.DB.prepare(
+    'SELECT active FROM weekly_schedule WHERE psychologist_id = ? AND day_of_week = ?'
+  )
+    .bind(psychologistId, dayOfWeek)
+    .first<{ active: number }>();
+
+  if (!scheduleWindow || scheduleWindow.active === 0) {
+    return c.json({ success: false, error: 'La fecha de inicio cae en un día no laboral según tu agenda semanal' }, 400);
+  }
+
   const recurringResult = await c.env.DB.prepare(
     `INSERT INTO recurring_bookings
-       (psychologist_id, patient_name, patient_email, patient_phone, frequency_weeks, start_date, time)
+       (psychologist_id, patient_name, patient_email, patient_phone, frequency_weeks, start_date, "time")
      VALUES (?, ?, ?, ?, ?, ?, ?)`,
   )
     .bind(psychologistId, patient_name, patient_email, patient_phone, frequency_weeks, start_date, time)
@@ -226,13 +290,13 @@ recurringRouter.get('/', authMiddleware, async (c) => {
                 WHERE r.paciente_email = rb.patient_email
                   AND r.paciente_telefono = rb.patient_phone
                   AND s.hora_inicio = rb."time"
-                  AND s.fecha >= date('now')
+                  AND s.fecha >= ?
               ) as next_appointment
        FROM recurring_bookings rb
        WHERE rb.psychologist_id = ? AND rb.active = 1
        ORDER BY rb.start_date`,
     )
-      .bind(psychologistId)
+      .bind(todayStr(), psychologistId)
       .all<RecurringRow>();
 
     return c.json({ success: true, data: result.results });
@@ -250,16 +314,19 @@ recurringRouter.delete('/:id', async (c) => {
   const id = Number(c.req.param('id'));
   let email: string | undefined;
   let phone: string | undefined;
+  let from_date: string | undefined;
+
+  let body: { email?: string; phone?: string; from_date?: string };
+  try {
+    body = await c.req.json();
+    email = body?.email;
+    phone = body?.phone;
+    from_date = body?.from_date;
+  } catch {
+    // allow empty payload for admin pure deletes
+  }
 
   if (!isPsychologist) {
-    let body: { email?: string; phone?: string };
-    try {
-      body = await c.req.json();
-      email = body.email;
-      phone = body.phone;
-    } catch {
-      return c.json({ success: false, error: 'Cuerpo JSON inválido' }, 400);
-    }
     if (!email && !phone) {
       return c.json({ success: false, error: 'Ingresá tu email o teléfono para cancelar' }, 400);
     }
@@ -267,11 +334,11 @@ recurringRouter.delete('/:id', async (c) => {
 
   try {
     const recurring = await c.env.DB.prepare(
-      `SELECT id, psychologist_id, patient_email, patient_phone, "time"
+      `SELECT id, psychologist_id, patient_email, patient_phone, "time", start_date, frequency_weeks
        FROM recurring_bookings WHERE id = ? AND active = 1`,
     )
       .bind(id)
-      .first<{ id: number; psychologist_id: number; patient_email: string; patient_phone: string; time: string }>();
+      .first<{ id: number; psychologist_id: number; patient_email: string; patient_phone: string; time: string; start_date: string; frequency_weeks: number }>();
 
     if (!recurring) {
       return c.json({ success: false, error: 'Recurrencia no encontrada' }, 404);
@@ -286,21 +353,51 @@ recurringRouter.delete('/:id', async (c) => {
     }
 
     const today = todayStr();
+    const isTotalCancellation = !from_date || !isValidDate(from_date);
+    const targetDate = isTotalCancellation ? today : from_date;
 
-    // Find future slots for this recurrence via reservas (slots has no recurring_booking_id column)
-    const futureSlots = await c.env.DB.prepare(
-      `SELECT s.id FROM slots s
-       JOIN reservas r ON r.slot_id = s.id
-       WHERE r.paciente_email = ?
-         AND r.paciente_telefono = ?
+    // If total cancellation, we also want to clean up past orphaned slots (r.id IS NULL)
+    // while keeping past booked sessions (traceability).
+    const dateCriteria = isTotalCancellation
+      ? `(s.fecha >= ? OR (s.fecha < ? AND r.id IS NULL))`
+      : `s.fecha >= ?`;
+
+    // Find slots for this recurrence (including orphaned empty slots)
+    const query = `SELECT s.id, s.fecha FROM slots s
+       LEFT JOIN reservas r ON r.slot_id = s.id
+       WHERE s.psicologo_id = ?
          AND s.hora_inicio = ?
-         AND s.fecha > ?
-         AND s.psicologo_id = ?`,
-    )
-      .bind(recurring.patient_email, recurring.patient_phone, recurring.time, today, recurring.psychologist_id)
-      .all<SlotIdRow>();
+         AND ${dateCriteria}
+         AND (
+           (r.paciente_email = ? AND r.paciente_telefono = ?)
+           OR r.id IS NULL
+         )`;
 
-    const slotIds = futureSlots.results.map((s) => s.id);
+    let stmt;
+    if (isTotalCancellation) {
+      stmt = c.env.DB.prepare(query).bind(
+        recurring.psychologist_id,
+        recurring.time,
+        targetDate,
+        targetDate,
+        recurring.patient_email,
+        recurring.patient_phone
+      );
+    } else {
+      stmt = c.env.DB.prepare(query).bind(
+        recurring.psychologist_id,
+        recurring.time,
+        targetDate,
+        recurring.patient_email,
+        recurring.patient_phone
+      );
+    }
+
+    const candidateSlots = await stmt.all<{ id: number; fecha: string }>();
+
+    const slotIds = candidateSlots.results
+      .filter((s) => matchesRecurrence(s.fecha, recurring.start_date, recurring.frequency_weeks))
+      .map((s) => s.id);
 
     if (slotIds.length > 0) {
       const batchSize = 50;
@@ -325,9 +422,48 @@ recurringRouter.delete('/:id', async (c) => {
   }
 });
 
+// PATCH /api/recurring/:id — update frequency (admin)
+recurringRouter.patch('/:id', authMiddleware, async (c) => {
+  const id = Number(c.req.param('id'));
+  const psychologistId = c.get('psychologistId');
+
+  let body: { frequency_weeks?: number };
+  try {
+    body = await c.req.json();
+  } catch {
+    return c.json({ success: false, error: 'Cuerpo JSON inválido' }, 400);
+  }
+
+  const { frequency_weeks } = body;
+  if (!frequency_weeks || ![1, 2, 3, 4].includes(frequency_weeks)) {
+    return c.json({ success: false, error: 'frequency_weeks debe ser 1, 2, 3 o 4' }, 400);
+  }
+
+  const res = await c.env.DB.prepare('UPDATE recurring_bookings SET frequency_weeks = ? WHERE id = ? AND psychologist_id = ? AND active = 1')
+    .bind(frequency_weeks, id, psychologistId)
+    .run();
+
+  if (res.meta.changes === 0) {
+    return c.json({ success: false, error: 'Recurrencia no encontrada o inactiva' }, 404);
+  }
+
+  return c.json({ success: true });
+});
+
 // PATCH /api/recurring/:id/reschedule-from — reschedule this and all future recurring instances
 recurringRouter.patch('/:id/reschedule-from', async (c) => {
   const id = Number(c.req.param('id'));
+
+  let isPsychologist = false;
+  const authHeader = c.req.header('Authorization');
+  if (authHeader?.startsWith('Bearer ')) {
+    const token = authHeader.slice(7);
+    const payload = await verifyJWT(token, c.env.JWT_SECRET);
+    if (payload) {
+      isPsychologist = true;
+    }
+  }
+
   let body: { email?: string; phone?: string; from_date?: string; new_time?: string };
   try {
     body = await c.req.json();
@@ -336,8 +472,8 @@ recurringRouter.patch('/:id/reschedule-from', async (c) => {
   }
 
   const { email, phone, from_date, new_time } = body;
-  if ((!email && !phone) || !from_date || !new_time) {
-    return c.json({ success: false, error: 'Ingresá tu email o teléfono, fecha de inicio y nueva hora son requeridos' }, 400);
+  if ((!isPsychologist && !email && !phone) || !from_date || !new_time) {
+    return c.json({ success: false, error: 'Faltan datos requeridos (fecha de inicio y nueva hora)' }, 400);
   }
 
   // 1. Fetch recurrence and verify patient identity (email OR phone)
@@ -351,10 +487,12 @@ recurringRouter.patch('/:id/reschedule-from', async (c) => {
     return c.json({ success: false, error: 'Recurrencia no encontrada' }, 404);
   }
 
-  const emailMatch = email && recurring.patient_email === email;
-  const phoneMatch = phone && recurring.patient_phone === phone;
-  if (!emailMatch && !phoneMatch) {
-    return c.json({ success: false, error: 'Datos de verificación incorrectos' }, 403);
+  if (!isPsychologist) {
+    const emailMatch = email && recurring.patient_email === email;
+    const phoneMatch = phone && recurring.patient_phone === phone;
+    if (!emailMatch && !phoneMatch) {
+      return c.json({ success: false, error: 'Datos de verificación incorrectos' }, 403);
+    }
   }
 
   // 2. Get session duration to calculate new end_time
@@ -366,7 +504,7 @@ recurringRouter.patch('/:id/reschedule-from', async (c) => {
 
   // 3. Find all future slots in the series via reservas (slots has no recurring_booking_id column)
   const futureSlots = await c.env.DB.prepare(
-    `SELECT s.id, s.fecha as date FROM slots s
+    `SELECT s.id, s.fecha as "date" FROM slots s
      JOIN reservas r ON r.slot_id = s.id
      WHERE r.paciente_email = ?
        AND r.paciente_telefono = ?
@@ -378,14 +516,18 @@ recurringRouter.patch('/:id/reschedule-from', async (c) => {
     .bind(recurring.patient_email, recurring.patient_phone, recurring.time, from_date, recurring.psychologist_id)
     .all<{ id: number; date: string }>();
 
-  if (futureSlots.results.length === 0) {
+  const candidateSlots = futureSlots.results.filter((s) =>
+    matchesRecurrence(s.date, recurring.start_date, recurring.frequency_weeks)
+  );
+
+  if (candidateSlots.length === 0) {
     return c.json({ success: false, error: 'No se encontraron turnos futuros para reprogramar' }, 404);
   }
 
   let rescheduledCount = 0;
   const finalBatch = [];
 
-  for (const slot of futureSlots.results) {
+  for (const slot of candidateSlots) {
     const conflict = await c.env.DB.prepare(
       `SELECT id FROM slots
        WHERE psicologo_id = ? AND fecha = ? AND id != ?

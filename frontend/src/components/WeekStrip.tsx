@@ -7,8 +7,10 @@ interface Props {
   onSelect: (date: string) => void;
 }
 
+import { getTodayDateString } from '../lib/date';
+
 export function WeekStrip({ dates, selectedDate, onSelect }: Props) {
-  const today = new Date().toISOString().split('T')[0];
+  const today = getTodayDateString();
 
   return (
     <div className="flex gap-2 overflow-x-auto scrollbar-hide pb-1 px-0.5">
@@ -22,13 +24,12 @@ export function WeekStrip({ dates, selectedDate, onSelect }: Props) {
           <button
             key={dateStr}
             onClick={() => onSelect(dateStr)}
-            className={`flex-none flex flex-col items-center gap-0.5 min-w-[52px] px-2 py-2.5 rounded-xl transition-all ${
-              isSelected
+            className={`flex-none flex flex-col items-center gap-0.5 min-w-[52px] px-2 py-2.5 rounded-xl transition-all ${isSelected
                 ? 'bg-white text-[#1a2e4a] shadow-md'
                 : isToday
-                ? 'bg-white/20 text-white'
-                : 'bg-white/10 text-white/70 hover:bg-white/20'
-            }`}
+                  ? 'bg-white/20 text-white'
+                  : 'bg-white/10 text-white/70 hover:bg-white/20'
+              }`}
           >
             <span className="text-[11px] font-semibold uppercase tracking-wide">
               {DAY_LABELS[date.getDay()]}

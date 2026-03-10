@@ -26,11 +26,12 @@ function formatDateShort(dateStr: string): string {
   });
 }
 
+import { getTodayDateString, addDaysToLocal } from '../lib/date';
+
 function generateNext14Days(): string[] {
   return Array.from({ length: 14 }, (_, i) => {
     const d = new Date();
-    d.setDate(d.getDate() + i);
-    return d.toISOString().split('T')[0];
+    return addDaysToLocal(d, i);
   });
 }
 
@@ -53,7 +54,7 @@ type OutsidePolicyModal = {
 type PsychologistContact = { nombre: string; whatsapp_number: string | null };
 
 export function PatientView() {
-  const today = new Date().toISOString().split('T')[0];
+  const today = getTodayDateString();
   const stripDates = generateNext14Days();
 
   // Booking section
@@ -262,7 +263,7 @@ export function PatientView() {
           ? 'Tus sesiones fueron reprogramadas exitosamente'
           : 'Tu sesión fue cambiada exitosamente',
       );
-      handleSearchBookings({ preventDefault: () => {} } as React.FormEvent);
+      handleSearchBookings({ preventDefault: () => { } } as React.FormEvent);
       loadSlots();
     } else {
       setRescheduleError(res.error ?? 'Error al reprogramar');

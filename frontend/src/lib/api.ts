@@ -88,8 +88,23 @@ export const removeHolidayOverride = (date: string) =>
 
 // ── Slots (public) ────────────────────────────────────────────────────────────
 
-export const getSlots = (date: string) =>
-  request<Slot[]>(`/slots?date=${date}`);
+export const getSlots = async (date: string) => {
+  const result = await request<Slot[]>(`/slots?date=${date}`);
+  if (result.success && result.data) {
+    const today = new Date();
+    const isToday =
+      today.toISOString().split('T')[0] === date;
+    if (isToday) {
+      const nowHours = today.getHours() + today.getMinutes() / 60;
+      result.data = result.data.filter(s => {
+        const [h, m] = s.start_time.split(':').map(Number);
+        const slotHours = h + m / 60;
+        return slotHours > nowHours;
+      });
+    }
+  }
+  return result;
+};
 
 // ── Slots (admin) ─────────────────────────────────────────────────────────────
 
@@ -167,10 +182,16 @@ export const createRecurring = (data: {
     { method: 'POST', body: JSON.stringify(data) },
   );
 
-export const cancelRecurring = (id: number, email?: string, phone?: string) =>
+export const cancelRecurring = (id: number, email?: string, phone?: string, from_date?: string) =>
   request<{ slots_deleted: number }>(`/recurring/${id}`, {
     method: 'DELETE',
-    body: (email || phone) ? JSON.stringify({ email, phone }) : undefined,
+    body: (email || phone || from_date) ? JSON.stringify({ email, phone, from_date }) : undefined,
+  });
+
+export const updateRecurringFrequency = (id: number, frequency_weeks: number) =>
+  request(`/recurring/${id}`, {
+    method: 'PATCH',
+    body: JSON.stringify({ frequency_weeks }),
   });
 
 export const rescheduleRecurring = (id: number, data: { email?: string; phone?: string; from_date: string; new_time: string }) =>

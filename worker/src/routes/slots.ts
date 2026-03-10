@@ -21,8 +21,10 @@ function addMinutes(time: string, minutes: number): string {
   return `${String(Math.floor(total / 60) % 24).padStart(2, '0')}:${String(total % 60).padStart(2, '0')}`;
 }
 
+import { getTodayDateString } from '../lib/date';
+
 function todayUTC(): string {
-  return new Date().toISOString().split('T')[0];
+  return getTodayDateString();
 }
 
 function dateFromUTC(dateStr: string): Date {
@@ -157,9 +159,16 @@ slotsRouter.get('/all', authMiddleware, async (c) => {
 
   let query = `
     SELECT s.id, s.fecha as "date", s.hora_inicio as start_time, s.hora_fin as end_time, s.disponible as available,
-           b.id as booking_id, b.paciente_nombre as patient_name, b.paciente_email as patient_email, b.paciente_telefono as patient_phone
+           b.id as booking_id, b.paciente_nombre as patient_name, b.paciente_email as patient_email, b.paciente_telefono as patient_phone,
+           rb.id as recurring_booking_id
     FROM slots s
     LEFT JOIN reservas b ON b.slot_id = s.id
+    LEFT JOIN recurring_bookings rb
+      ON rb.patient_email = b.paciente_email
+      AND rb.patient_phone = b.paciente_telefono
+      AND rb."time" = s.hora_inicio
+      AND rb.psychologist_id = s.psicologo_id
+      AND rb.active = 1
     WHERE s.psicologo_id = ?
   `;
   const params: (string | number)[] = [psychologistId];

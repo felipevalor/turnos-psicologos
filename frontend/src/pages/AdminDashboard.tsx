@@ -2,6 +2,9 @@ import { useState, useEffect, useCallback } from 'react';
 import { SlotForm } from '../components/SlotForm';
 import { BottomSheet } from '../components/BottomSheet';
 import { StatusBadge } from '../components/StatusBadge';
+import { DashboardTab } from '../components/DashboardTab';
+import { SessionManagementModal } from '../components/SessionManagementModal';
+import { RecurringManagementModal } from '../components/RecurringManagementModal';
 import {
   getAllSlots,
   getBookings,
@@ -19,9 +22,8 @@ import {
   getHolidays,
   addHolidayOverride,
   removeHolidayOverride,
-  getDashboard,
 } from '../lib/api';
-import type { Psychologist, SlotWithBooking, BookingWithSlot, RecurringBooking, WeeklyDaySchedule, Holiday, DashboardData } from '../lib/types';
+import type { Psychologist, SlotWithBooking, BookingWithSlot, RecurringBooking, WeeklyDaySchedule, Holiday } from '../lib/types';
 
 type Tab = 'dashboard' | 'agenda' | 'create' | 'bookings' | 'recurring' | 'settings';
 
@@ -89,10 +91,10 @@ interface Props {
 const TAB_ITEMS: { id: Tab; label: string; icon: React.ReactNode }[] = [
   {
     id: 'dashboard',
-    label: 'Inicio',
+    label: 'Dashboard',
     icon: (
-      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" />
+      <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zM14 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z" />
       </svg>
     ),
   },
@@ -100,43 +102,43 @@ const TAB_ITEMS: { id: Tab; label: string; icon: React.ReactNode }[] = [
     id: 'agenda',
     label: 'Agenda',
     icon: (
-      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+      <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
       </svg>
     ),
   },
   {
     id: 'create',
-    label: 'Crear',
+    label: 'Crear Sobreturno',
     icon: (
-      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+      <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
       </svg>
     ),
   },
   {
     id: 'bookings',
-    label: 'Reservas',
+    label: 'Sesiones Agendadas',
     icon: (
-      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
+      <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
       </svg>
     ),
   },
   {
     id: 'recurring',
-    label: 'Recurrencias',
+    label: 'Pacientes Recurrentes',
     icon: (
-      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+      <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
       </svg>
     ),
   },
   {
     id: 'settings',
-    label: 'Config',
+    label: 'Configuración',
     icon: (
-      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+      <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
       </svg>
@@ -144,14 +146,14 @@ const TAB_ITEMS: { id: Tab; label: string; icon: React.ReactNode }[] = [
   },
 ];
 
+import { getTodayDateString } from '../lib/date';
+
 export function AdminDashboard({ psychologist, onLogout }: Props) {
-  const today = new Date().toISOString().split('T')[0];
+  const today = getTodayDateString();
   const [tab, setTab] = useState<Tab>('dashboard');
-  const [dashboardData, setDashboardData] = useState<DashboardData | null>(null);
-  const [loadingDashboard, setLoadingDashboard] = useState(false);
   const [agendaView, setAgendaView] = useState<'dia' | 'semana' | 'mes'>('semana');
   const [weekRef, setWeekRef] = useState(new Date());
-  const [monthRef, setMonthRef] = useState(() => { const d = new Date(); d.setDate(1); d.setHours(0,0,0,0); return d; });
+  const [monthRef, setMonthRef] = useState(() => { const d = new Date(); d.setDate(1); d.setHours(0, 0, 0, 0); return d; });
   const [selectedDay, setSelectedDay] = useState(today);
   const [slots, setSlots] = useState<SlotWithBooking[]>([]);
   const [bookings, setBookings] = useState<BookingWithSlot[]>([]);
@@ -161,8 +163,12 @@ export function AdminDashboard({ psychologist, onLogout }: Props) {
   const [loadingRecurring, setLoadingRecurring] = useState(false);
   const [actionError, setActionError] = useState('');
   const [actionSuccess, setActionSuccess] = useState('');
+  const [dashboardKey, setDashboardKey] = useState(0);
   const [deleteModalOpen, setDeleteModalOpen] = useState(false);
   const [slotToDelete, setSlotToDelete] = useState<number | null>(null);
+  const [managingSlot, setManagingSlot] = useState<SlotWithBooking | null>(null);
+  const [managingRecurring, setManagingRecurring] = useState<RecurringBooking | null>(null);
+  const [recurringContextSlot, setRecurringContextSlot] = useState<SlotWithBooking | undefined>(undefined);
   const [cancelRecurringTarget, setCancelRecurringTarget] = useState<{ id: number; name: string } | null>(null);
   const [recurringForm, setRecurringForm] = useState({
     patient_name: '', patient_email: '', patient_phone: '',
@@ -251,11 +257,7 @@ export function AdminDashboard({ psychologist, onLogout }: Props) {
 
   useEffect(() => {
     if (tab === 'dashboard') {
-      setLoadingDashboard(true);
-      getDashboard().then(res => {
-        setLoadingDashboard(false);
-        if (res.success && res.data) setDashboardData(res.data);
-      });
+      // Data is loaded inside DashboardTab
     }
     if (tab === 'bookings') loadBookings();
     if (tab === 'recurring') loadRecurring();
@@ -454,7 +456,7 @@ export function AdminDashboard({ psychologist, onLogout }: Props) {
 
   const handleToday = () => {
     setWeekRef(new Date());
-    setMonthRef(() => { const d = new Date(); d.setDate(1); d.setHours(0,0,0,0); return d; });
+    setMonthRef(() => { const d = new Date(); d.setDate(1); d.setHours(0, 0, 0, 0); return d; });
     setSelectedDay(today);
   };
 
@@ -463,6 +465,11 @@ export function AdminDashboard({ psychologist, onLogout }: Props) {
     setSelectedDay(dateStr);
     setWeekRef(d);
     setAgendaView('dia');
+  };
+
+  const navigateToAgendaView = (dateStr: string) => {
+    selectDayFromOverview(dateStr);
+    setTab('agenda');
   };
 
   // Slots for the selected day
@@ -508,11 +515,10 @@ export function AdminDashboard({ psychologist, onLogout }: Props) {
               <button
                 key={id}
                 onClick={() => setTab(id)}
-                className={`py-3 text-sm font-medium border-b-2 transition-colors ${
-                  tab === id
-                    ? 'border-[#1a2e4a] text-[#1a2e4a]'
-                    : 'border-transparent text-slate-500 hover:text-slate-700'
-                }`}
+                className={`py-3 text-sm font-medium border-b-2 transition-colors ${tab === id
+                  ? 'border-[#1a2e4a] text-[#1a2e4a]'
+                  : 'border-transparent text-slate-500 hover:text-slate-700'
+                  }`}
               >
                 {label}
               </button>
@@ -528,138 +534,18 @@ export function AdminDashboard({ psychologist, onLogout }: Props) {
           </div>
         )}
 
+        {/* Tab content header */}
+        <div className="flex items-center gap-3 mb-5">
+          {TAB_ITEMS.find((t) => t.id === tab)?.icon}
+          <h2 className="text-xl font-bold text-[#1a2e4a]">
+            {TAB_ITEMS.find((t) => t.id === tab)?.label}
+          </h2>
+        </div>
+
         {/* ── DASHBOARD TAB ──────────────────────────────── */}
-        {tab === 'dashboard' && (() => {
-          const MONTH_ES = ['enero','febrero','marzo','abril','mayo','junio','julio','agosto','septiembre','octubre','noviembre','diciembre'];
-          const nowDate = new Date();
-          const curMonthName = MONTH_ES[nowDate.getMonth()].charAt(0).toUpperCase() + MONTH_ES[nowDate.getMonth()].slice(1);
-
-          const DiffBadge = ({ cur, prev, suffix = '%' }: { cur: number; prev: number; suffix?: string }) => {
-            if (prev === 0 && cur === 0) return null;
-            const diff = cur - prev;
-            if (diff === 0) return null;
-            const positive = diff > 0;
-            return (
-              <span className={`inline-flex items-center gap-0.5 text-xs font-bold px-2 py-0.5 rounded-full ${positive ? 'bg-[#4caf7d]/15 text-[#1e6e44]' : 'bg-red-100 text-red-600'}`}>
-                {positive ? '↑' : '↓'} {positive ? '+' : ''}{diff}{suffix}
-              </span>
-            );
-          };
-
-          const OccupancyBar = ({ pct }: { pct: number }) => (
-            <div className="w-full h-2 bg-slate-100 rounded-full overflow-hidden mt-2">
-              <div
-                className="h-full rounded-full bg-[#1a2e4a] transition-all"
-                style={{ width: `${Math.min(pct, 100)}%` }}
-              />
-            </div>
-          );
-
-          if (loadingDashboard || !dashboardData) {
-            return (
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 animate-pulse">
-                {[1,2,3,4,5].map(i => (
-                  <div key={i} className="bg-white rounded-2xl border border-slate-100 p-5 h-32" />
-                ))}
-              </div>
-            );
-          }
-
-          const { today: todayData, week, month, patients } = dashboardData;
-
-          return (
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-
-              {/* Card 1 — Hoy */}
-              <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-5 sm:col-span-2">
-                <div className="flex items-center justify-between mb-3">
-                  <h3 className="text-sm font-bold text-slate-500 uppercase tracking-wide">Sesiones de hoy</h3>
-                  <span className="text-xs text-slate-400">{formatDateLong(todayData.date)}</span>
-                </div>
-                {todayData.upcoming_sessions.length === 0 ? (
-                  <p className="text-slate-400 text-sm">No hay sesiones para hoy</p>
-                ) : (
-                  <div className="divide-y divide-slate-50">
-                    {todayData.upcoming_sessions.map(s => (
-                      <div key={s.id} className="py-2.5 flex items-center gap-3">
-                        <span className="text-base font-bold text-[#1a2e4a] w-12 flex-none">{s.hora_inicio}</span>
-                        <div className="flex-1 min-w-0">
-                          <p className="text-sm font-semibold text-slate-700 truncate">{s.patient_name}</p>
-                          <p className="text-xs text-slate-400 truncate">{s.patient_email}</p>
-                        </div>
-                        <span className="text-xs text-slate-400 flex-none">{s.hora_fin}</span>
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </div>
-
-              {/* Card 2 — Ocupación semanal */}
-              <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-5">
-                <h3 className="text-sm font-bold text-slate-500 uppercase tracking-wide mb-3">Semana actual</h3>
-                <div className="flex items-end gap-3">
-                  <span className="text-4xl font-bold text-[#1a2e4a] leading-none">{week.occupancy_pct}%</span>
-                  <DiffBadge cur={week.occupancy_pct} prev={week.prev_occupancy_pct} />
-                </div>
-                <p className="text-sm text-slate-400 mt-1">{week.booked_slots} de {week.total_slots} slots ocupados</p>
-                <OccupancyBar pct={week.occupancy_pct} />
-                <p className="text-xs text-slate-300 mt-1">Semana anterior: {week.prev_occupancy_pct}%</p>
-              </div>
-
-              {/* Card 3 — Ocupación mensual */}
-              <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-5">
-                <h3 className="text-sm font-bold text-slate-500 uppercase tracking-wide mb-3">{curMonthName}</h3>
-                <div className="flex items-end gap-3">
-                  <span className="text-4xl font-bold text-[#1a2e4a] leading-none">{month.occupancy_pct}%</span>
-                  <DiffBadge cur={month.occupancy_pct} prev={month.prev_occupancy_pct} />
-                </div>
-                <p className="text-sm text-slate-400 mt-1">{month.booked_slots} de {month.total_slots} slots ocupados</p>
-                <OccupancyBar pct={month.occupancy_pct} />
-                <p className="text-xs text-slate-300 mt-1">Mes anterior: {month.prev_occupancy_pct}%</p>
-              </div>
-
-              {/* Card 4 — Sesiones del mes */}
-              <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-5">
-                <h3 className="text-sm font-bold text-slate-500 uppercase tracking-wide mb-3">Sesiones del mes</h3>
-                <div className="flex items-end gap-3">
-                  <span className="text-4xl font-bold text-[#1a2e4a] leading-none">{month.new_sessions}</span>
-                  <DiffBadge cur={month.new_sessions} prev={month.prev_booked_slots} suffix=" sesiones" />
-                </div>
-                <p className="text-sm text-slate-400 mt-1">
-                  {month.cancelled > 0
-                    ? `${month.cancelled} canceladas · ${month.cancellation_rate_pct}% tasa de cancelación`
-                    : 'Sin cancelaciones registradas'}
-                </p>
-              </div>
-
-              {/* Card 5 — Pacientes */}
-              <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-5">
-                <h3 className="text-sm font-bold text-slate-500 uppercase tracking-wide mb-3">Pacientes</h3>
-                <div className="flex gap-6">
-                  <div>
-                    <div className="flex items-center gap-2 mb-0.5">
-                      <svg className="w-4 h-4 text-[#1a2e4a]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
-                      </svg>
-                      <span className="text-3xl font-bold text-[#1a2e4a]">{patients.active}</span>
-                    </div>
-                    <p className="text-sm text-slate-400">activos</p>
-                  </div>
-                  <div>
-                    <div className="flex items-center gap-2 mb-0.5">
-                      <svg className="w-4 h-4 text-[#4caf7d]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11.049 2.927c.3-.921 1.603-.921 1.902 0l1.519 4.674a1 1 0 00.95.69h4.915c.969 0 1.371 1.24.588 1.81l-3.976 2.888a1 1 0 00-.363 1.118l1.518 4.674c.3.922-.755 1.688-1.538 1.118l-3.976-2.888a1 1 0 00-1.176 0l-3.976 2.888c-.783.57-1.838-.197-1.538-1.118l1.518-4.674a1 1 0 00-.363-1.118l-3.976-2.888c-.784-.57-.38-1.81.588-1.81h4.914a1 1 0 00.951-.69l1.519-4.674z" />
-                      </svg>
-                      <span className="text-3xl font-bold text-[#4caf7d]">{patients.new_this_month}</span>
-                    </div>
-                    <p className="text-sm text-slate-400">nuevos este mes</p>
-                  </div>
-                </div>
-              </div>
-
-            </div>
-          );
-        })()}
+        {tab === 'dashboard' && (
+          <DashboardTab key={dashboardKey} onNavigateToAgenda={navigateToAgendaView} />
+        )}
 
         {/* ── AGENDA TAB ─────────────────────────────────── */}
         {tab === 'agenda' && (() => {
@@ -708,9 +594,8 @@ export function AdminDashboard({ psychologist, onLogout }: Props) {
                     <button
                       key={v}
                       onClick={() => setAgendaView(v)}
-                      className={`px-2.5 py-1 rounded-md transition-colors capitalize ${
-                        agendaView === v ? 'bg-white text-[#1a2e4a] shadow-sm' : 'text-slate-500 hover:text-slate-700'
-                      }`}
+                      className={`px-2.5 py-1 rounded-md transition-colors capitalize ${agendaView === v ? 'bg-white text-[#1a2e4a] shadow-sm' : 'text-slate-500 hover:text-slate-700'
+                        }`}
                     >
                       {v.charAt(0).toUpperCase() + v.slice(1)}
                     </button>
@@ -773,15 +658,24 @@ export function AdminDashboard({ psychologist, onLogout }: Props) {
                                   <p className="text-xs text-slate-400 truncate">{slot.patient_email}</p>
                                 )}
                               </div>
+                              {isBooked && (
+                                <div className="flex gap-2 flex-none">
+                                  <button
+                                    onClick={() => setManagingSlot(slot)}
+                                    className="text-xs font-semibold px-3 py-1.5 rounded-lg bg-slate-100 text-slate-600 hover:bg-slate-200 transition-colors"
+                                  >
+                                    Gestionar
+                                  </button>
+                                </div>
+                              )}
                               {!isBooked && (
                                 <div className="flex gap-2 flex-none">
                                   <button
                                     onClick={() => openBlockModal(slot)}
-                                    className={`text-xs font-semibold px-3 py-1.5 rounded-lg transition-colors ${
-                                      isBlocked
-                                        ? 'bg-[#4caf7d]/10 text-[#1e6e44] hover:bg-[#4caf7d]/20'
-                                        : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
-                                    }`}
+                                    className={`text-xs font-semibold px-3 py-1.5 rounded-lg transition-colors ${isBlocked
+                                      ? 'bg-[#4caf7d]/10 text-[#1e6e44] hover:bg-[#4caf7d]/20'
+                                      : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+                                      }`}
                                   >
                                     {isBlocked ? 'Liberar' : 'Bloquear'}
                                   </button>
@@ -830,11 +724,10 @@ export function AdminDashboard({ psychologist, onLogout }: Props) {
                           <button
                             key={dateStr}
                             onClick={() => selectDayFromOverview(dateStr)}
-                            className={`flex flex-col items-center rounded-2xl px-1 py-3 transition-all border ${
-                              isToday
-                                ? 'bg-[#1a2e4a] text-white border-[#1a2e4a]'
-                                : 'bg-white text-slate-700 border-slate-100 hover:border-[#1a2e4a]/30 hover:shadow-sm'
-                            }`}
+                            className={`flex flex-col items-center rounded-2xl px-1 py-3 transition-all border ${isToday
+                              ? 'bg-[#1a2e4a] text-white border-[#1a2e4a]'
+                              : 'bg-white text-slate-700 border-slate-100 hover:border-[#1a2e4a]/30 hover:shadow-sm'
+                              }`}
                           >
                             <span className={`text-[10px] font-semibold uppercase tracking-wide ${isToday ? 'text-white/70' : 'text-slate-400'}`}>
                               {DAY_SHORT[dayDate.getDay()]}
@@ -905,13 +798,11 @@ export function AdminDashboard({ psychologist, onLogout }: Props) {
                               <button
                                 key={dateStr}
                                 onClick={() => selectDayFromOverview(dateStr)}
-                                className={`min-h-[52px] p-1.5 flex flex-col items-center border-slate-50 transition-colors hover:bg-slate-50 ${
-                                  !isLastRow ? 'border-b' : ''
-                                } ${idx % 7 !== 6 ? 'border-r' : ''}`}
+                                className={`min-h-[52px] p-1.5 flex flex-col items-center border-slate-50 transition-colors hover:bg-slate-50 ${!isLastRow ? 'border-b' : ''
+                                  } ${idx % 7 !== 6 ? 'border-r' : ''}`}
                               >
-                                <span className={`text-xs font-bold w-6 h-6 flex items-center justify-center rounded-full ${
-                                  isToday ? 'bg-[#1a2e4a] text-white' : 'text-slate-700'
-                                }`}>
+                                <span className={`text-xs font-bold w-6 h-6 flex items-center justify-center rounded-full ${isToday ? 'bg-[#1a2e4a] text-white' : 'text-slate-700'
+                                  }`}>
                                   {cell.getDate()}
                                 </span>
                                 {total > 0 && (
@@ -984,6 +875,15 @@ export function AdminDashboard({ psychologist, onLogout }: Props) {
                         <div className="text-right flex-none">
                           <p className="text-sm font-semibold text-slate-700 capitalize">{formatDate(b.date)}</p>
                           <p className="text-xs text-slate-400">{b.start_time} – {b.end_time}</p>
+                          <button
+                            onClick={() => navigateToAgendaView(b.date)}
+                            className="mt-1 text-xs font-semibold text-[#1a2e4a] hover:text-[#243d61] hover:underline flex items-center justify-end gap-1 w-full"
+                          >
+                            Ver en agenda
+                            <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                            </svg>
+                          </button>
                         </div>
                       </div>
                     </div>
@@ -1110,10 +1010,10 @@ export function AdminDashboard({ psychologist, onLogout }: Props) {
                           </p>
                         </div>
                         <button
-                          onClick={() => setCancelRecurringTarget({ id: r.id, name: r.patient_name })}
-                          className="text-xs text-red-500 hover:text-red-700 font-semibold flex-none"
+                          onClick={() => setManagingRecurring(r)}
+                          className="text-xs text-[#1a2e4a] hover:text-[#243d61] font-semibold flex-none underline"
                         >
-                          Cancelar
+                          Gestionar
                         </button>
                       </div>
                     ))}
@@ -1167,9 +1067,8 @@ export function AdminDashboard({ psychologist, onLogout }: Props) {
                         key={u}
                         type="button"
                         onClick={() => setPolicyUnit(u)}
-                        className={`px-3 py-1.5 rounded-md transition-colors ${
-                          policyUnit === u ? 'bg-white text-[#1a2e4a] shadow-sm' : 'text-slate-500 hover:text-slate-700'
-                        }`}
+                        className={`px-3 py-1.5 rounded-md transition-colors ${policyUnit === u ? 'bg-white text-[#1a2e4a] shadow-sm' : 'text-slate-500 hover:text-slate-700'
+                          }`}
                       >
                         {u === 'minutes' ? 'Minutos' : u === 'hours' ? 'Horas' : 'Días'}
                       </button>
@@ -1346,9 +1245,8 @@ export function AdminDashboard({ psychologist, onLogout }: Props) {
             <button
               key={id}
               onClick={() => setTab(id)}
-              className={`flex-1 flex flex-col items-center gap-1 py-3 transition-colors ${
-                tab === id ? 'text-[#1a2e4a]' : 'text-slate-400'
-              }`}
+              className={`flex-1 flex flex-col items-center gap-1 py-3 transition-colors ${tab === id ? 'text-[#1a2e4a]' : 'text-slate-400'
+                }`}
             >
               {icon}
               <span className="text-[10px] font-semibold">{label}</span>
@@ -1410,6 +1308,50 @@ export function AdminDashboard({ psychologist, onLogout }: Props) {
           </div>
         )}
       </BottomSheet>
+
+      {managingSlot && (
+        <SessionManagementModal
+          slot={managingSlot}
+          onClose={() => setManagingSlot(null)}
+          onSuccess={() => {
+            setManagingSlot(null);
+            loadSlots(agendaView === 'mes' ? monthDatesStr.split(',') : weekDateStrs);
+            loadBookings();
+            setDashboardKey(k => k + 1);
+            setActionSuccess('Sesión actualizada correctamente.');
+            setTimeout(() => setActionSuccess(''), 3000);
+          }}
+          onManageRecurring={() => {
+            const r = recurrings.find(rec => rec.id === managingSlot.recurring_booking_id);
+            if (r) {
+              setRecurringContextSlot(managingSlot);
+              setManagingSlot(null);
+              setManagingRecurring(r);
+            }
+          }}
+        />
+      )}
+
+      {managingRecurring && (
+        <RecurringManagementModal
+          recurring={managingRecurring}
+          currentBooking={recurringContextSlot}
+          onClose={() => {
+            setManagingRecurring(null);
+            setRecurringContextSlot(undefined);
+          }}
+          onSuccess={() => {
+            setManagingRecurring(null);
+            setRecurringContextSlot(undefined);
+            loadRecurring();
+            loadSlots(agendaView === 'mes' ? monthDatesStr.split(',') : weekDateStrs);
+            loadBookings();
+            setDashboardKey(k => k + 1);
+            setActionSuccess('Recurrencia actualizada correctamente.');
+            setTimeout(() => setActionSuccess(''), 3000);
+          }}
+        />
+      )}
 
       {/* Toast */}
       {actionSuccess && (

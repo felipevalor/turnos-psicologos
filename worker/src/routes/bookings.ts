@@ -1,6 +1,7 @@
 import { Hono } from 'hono';
 import { authMiddleware } from '../middleware/auth';
 import { verifyJWT } from '../lib/jwt';
+import { getTodayDateString } from '../lib/date';
 import type { Env, AppVariables } from '../types';
 
 type SlotBookingRow = {
@@ -208,10 +209,10 @@ bookingsRouter.post('/search', async (c) => {
          AND rb.psychologist_id = s.psicologo_id
          AND rb.active = 1
        WHERE (${conditions.join(' OR ')})
-       AND s.fecha >= date('now')
+       AND s.fecha >= ?
        ORDER BY s.fecha, s.hora_inicio`,
     )
-      .bind(...params)
+      .bind(...params, getTodayDateString())
       .all();
 
     return c.json({ success: true, data: result.results });
@@ -224,6 +225,17 @@ bookingsRouter.post('/search', async (c) => {
 // PATCH /api/bookings/:id — reschedule one-off or single recurring instance
 bookingsRouter.patch('/:id', async (c) => {
   const id = Number(c.req.param('id'));
+
+  let isPsychologist = false;
+  const authHeader = c.req.header('Authorization');
+  if (authHeader?.startsWith('Bearer ')) {
+    const token = authHeader.slice(7);
+    const payload = await verifyJWT(token, c.env.JWT_SECRET);
+    if (payload) {
+      isPsychologist = true;
+    }
+  }
+
   let body: { email?: string; phone?: string; new_slot_id?: number };
   try {
     body = await c.req.json();
@@ -232,8 +244,11 @@ bookingsRouter.patch('/:id', async (c) => {
   }
 
   const { email, phone, new_slot_id } = body;
-  if ((!email && !phone) || !new_slot_id) {
-    return c.json({ success: false, error: 'Ingresá tu email o teléfono, y seleccioná un nuevo turno' }, 400);
+  if (!isPsychologist && !email && !phone) {
+    return c.json({ success: false, error: 'Ingresá tu email o teléfono' }, 400);
+  }
+  if (!new_slot_id) {
+    return c.json({ success: false, error: 'Seleccioná un nuevo turno' }, 400);
   }
 
   // 1. Validate old booking (JOIN slots to get fecha/hora_inicio for policy check)
@@ -250,10 +265,12 @@ bookingsRouter.patch('/:id', async (c) => {
   if (!oldBooking) {
     return c.json({ success: false, error: 'Reserva no encontrada' }, 404);
   }
-  const emailMatch = email && oldBooking.paciente_email === email;
-  const phoneMatch = phone && oldBooking.paciente_telefono === phone;
-  if (!emailMatch && !phoneMatch) {
-    return c.json({ success: false, error: 'Datos de verificación incorrectos' }, 403);
+  if (!isPsychologist) {
+    const emailMatch = email && oldBooking.paciente_email === email;
+    const phoneMatch = phone && oldBooking.paciente_telefono === phone;
+    if (!emailMatch && !phoneMatch) {
+      return c.json({ success: false, error: 'Datos de verificación incorrectos' }, 403);
+    }
   }
 
   // 2. Validate new slot
@@ -273,35 +290,40 @@ bookingsRouter.patch('/:id', async (c) => {
     return c.json({ success: false, error: 'Este turno ya no está disponible, por favor elegí otro' }, 409);
   }
 
-  // 2b. Check reschedule policy against the ORIGINAL slot's datetime
-  const reschPolicy = await c.env.DB.prepare(
-    'SELECT reschedule_min_hours, whatsapp_number, nombre, policy_unit FROM psicologos WHERE id = ?',
-  ).bind(oldBooking.psicologo_id).first<Pick<PolicyRow, 'reschedule_min_hours' | 'whatsapp_number' | 'nombre' | 'policy_unit'>>();
+  if (!isPsychologist) {
+    // 2b. Check reschedule policy against the ORIGINAL slot's datetime
+    const reschPolicy = await c.env.DB.prepare(
+      'SELECT reschedule_min_hours, whatsapp_number, nombre, policy_unit FROM psicologos WHERE id = ?',
+    ).bind(oldBooking.psicologo_id).first<Pick<PolicyRow, 'reschedule_min_hours' | 'whatsapp_number' | 'nombre' | 'policy_unit'>>();
 
-  const reschedule_min_hours = reschPolicy?.reschedule_min_hours ?? 48;
-  const reschUnit = reschPolicy?.policy_unit ?? 'hours';
-  const reschThresholdHours = toHours(reschedule_min_hours, reschUnit);
-  const reschHours = hoursUntilSlot(oldBooking.fecha, oldBooking.hora_inicio);
-  console.log('[policy]', { action: 'reschedule', reschHours, policy: reschedule_min_hours, unit: reschUnit, thresholdHours: reschThresholdHours });
-  if (reschThresholdHours > 0 && reschHours < reschThresholdHours) {
-    return c.json({
-      success: false,
-      error: 'outside_policy',
-      policy_hours: reschedule_min_hours,
-      whatsapp_number: reschPolicy?.whatsapp_number ?? null,
-      psychologist_name: reschPolicy?.nombre ?? '',
-    }, 403);
+    const reschedule_min_hours = reschPolicy?.reschedule_min_hours ?? 48;
+    const reschUnit = reschPolicy?.policy_unit ?? 'hours';
+    const reschThresholdHours = toHours(reschedule_min_hours, reschUnit);
+    const reschHours = hoursUntilSlot(oldBooking.fecha, oldBooking.hora_inicio);
+    console.log('[policy]', { action: 'reschedule', reschHours, policy: reschedule_min_hours, unit: reschUnit, thresholdHours: reschThresholdHours });
+    if (reschThresholdHours > 0 && reschHours < reschThresholdHours) {
+      return c.json({
+        success: false,
+        error: 'outside_policy',
+        policy_hours: reschedule_min_hours,
+        whatsapp_number: reschPolicy?.whatsapp_number ?? null,
+        psychologist_name: reschPolicy?.nombre ?? '',
+      }, 403);
+    }
   }
 
-  // 3. Check for conflicts with patient's other bookings (excluding the one being rescheduled)
-  const conflict = await c.env.DB.prepare(
-    `SELECT b.id FROM reservas b
-     JOIN slots s ON b.slot_id = s.id
-     WHERE b.paciente_email = ? AND s.fecha = ? AND b.id != ?
-     AND NOT (s.hora_fin <= ? OR s.hora_inicio >= ?)`,
-  )
-    .bind(oldBooking.paciente_email, newSlot.fecha, id, newSlot.hora_inicio, newSlot.hora_fin)
-    .first();
+  let conflict = null;
+  if (!isPsychologist) {
+    // 3. Check for conflicts with patient's other bookings (excluding the one being rescheduled)
+    conflict = await c.env.DB.prepare(
+      `SELECT b.id FROM reservas b
+       JOIN slots s ON b.slot_id = s.id
+       WHERE b.paciente_email = ? AND s.fecha = ? AND b.id != ?
+       AND NOT (s.hora_fin <= ? OR s.hora_inicio >= ?)`,
+    )
+      .bind(oldBooking.paciente_email, newSlot.fecha, id, newSlot.hora_inicio, newSlot.hora_fin)
+      .first();
+  }
 
   if (conflict) {
     return c.json({ success: false, error: 'Ya tenés una reserva en ese horario' }, 409);
@@ -342,6 +364,16 @@ bookingsRouter.patch('/:id', async (c) => {
 bookingsRouter.delete('/:id', async (c) => {
   const id = Number(c.req.param('id'));
 
+  let isPsychologist = false;
+  const authHeader = c.req.header('Authorization');
+  if (authHeader?.startsWith('Bearer ')) {
+    const token = authHeader.slice(7);
+    const payload = await verifyJWT(token, c.env.JWT_SECRET);
+    if (payload) {
+      isPsychologist = true;
+    }
+  }
+
   let body: { email?: string; phone?: string };
   try {
     body = await c.req.json();
@@ -350,7 +382,7 @@ bookingsRouter.delete('/:id', async (c) => {
   }
 
   const { email, phone } = body;
-  if (!email && !phone) {
+  if (!isPsychologist && !email && !phone) {
     return c.json({ success: false, error: 'Ingresá tu email o teléfono para cancelar' }, 400);
   }
 
@@ -366,30 +398,35 @@ bookingsRouter.delete('/:id', async (c) => {
   if (!booking) {
     return c.json({ success: false, error: 'Reserva no encontrada' }, 404);
   }
-  const emailMatch = email && booking.paciente_email === email;
-  const phoneMatch = phone && booking.paciente_telefono === phone;
-  if (!emailMatch && !phoneMatch) {
-    return c.json({ success: false, error: 'Datos de verificación incorrectos' }, 403);
+
+  if (!isPsychologist) {
+    const emailMatch = email && booking.paciente_email === email;
+    const phoneMatch = phone && booking.paciente_telefono === phone;
+    if (!emailMatch && !phoneMatch) {
+      return c.json({ success: false, error: 'Datos de verificación incorrectos' }, 403);
+    }
   }
 
-  // Check cancel policy
-  const policy = await c.env.DB.prepare(
-    'SELECT cancel_min_hours, whatsapp_number, nombre, policy_unit FROM psicologos WHERE id = ?',
-  ).bind(booking.psicologo_id).first<Pick<PolicyRow, 'cancel_min_hours' | 'whatsapp_number' | 'nombre' | 'policy_unit'>>();
+  if (!isPsychologist) {
+    // Check cancel policy
+    const policy = await c.env.DB.prepare(
+      'SELECT cancel_min_hours, whatsapp_number, nombre, policy_unit FROM psicologos WHERE id = ?',
+    ).bind(booking.psicologo_id).first<Pick<PolicyRow, 'cancel_min_hours' | 'whatsapp_number' | 'nombre' | 'policy_unit'>>();
 
-  const cancel_min_hours = policy?.cancel_min_hours ?? 48;
-  const cancelUnit = policy?.policy_unit ?? 'hours';
-  const cancelThresholdHours = toHours(cancel_min_hours, cancelUnit);
-  const cancelHours = hoursUntilSlot(booking.fecha, booking.hora_inicio);
-  console.log('[policy]', { action: 'cancel', cancelHours, policy: cancel_min_hours, unit: cancelUnit, thresholdHours: cancelThresholdHours });
-  if (cancelThresholdHours > 0 && cancelHours < cancelThresholdHours) {
-    return c.json({
-      success: false,
-      error: 'outside_policy',
-      policy_hours: cancel_min_hours,
-      whatsapp_number: policy?.whatsapp_number ?? null,
-      psychologist_name: policy?.nombre ?? '',
-    }, 403);
+    const cancel_min_hours = policy?.cancel_min_hours ?? 48;
+    const cancelUnit = policy?.policy_unit ?? 'hours';
+    const cancelThresholdHours = toHours(cancel_min_hours, cancelUnit);
+    const cancelHours = hoursUntilSlot(booking.fecha, booking.hora_inicio);
+    console.log('[policy]', { action: 'cancel', cancelHours, policy: cancel_min_hours, unit: cancelUnit, thresholdHours: cancelThresholdHours });
+    if (cancelThresholdHours > 0 && cancelHours < cancelThresholdHours) {
+      return c.json({
+        success: false,
+        error: 'outside_policy',
+        policy_hours: cancel_min_hours,
+        whatsapp_number: policy?.whatsapp_number ?? null,
+        psychologist_name: policy?.nombre ?? '',
+      }, 403);
+    }
   }
 
   // Delete booking and restore slot
