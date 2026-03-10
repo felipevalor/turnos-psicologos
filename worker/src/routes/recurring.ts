@@ -356,62 +356,61 @@ recurringRouter.delete('/:id', async (c) => {
     const isTotalCancellation = !from_date || !isValidDate(from_date);
     const targetDate = isTotalCancellation ? today : from_date;
 
-    // If total cancellation, we also want to clean up past orphaned slots (r.id IS NULL)
-    // while keeping past booked sessions (traceability).
-    const dateCriteria = isTotalCancellation
-      ? `(s.fecha >= ? OR (s.fecha < ? AND r.id IS NULL))`
-      : `s.fecha >= ?`;
+    // Categorise slots into two groups:
+    // - booked slots (have a reserva): delete reserva + block slot (disponible=0) to prevent re-generation
+    // - orphaned slots (no reserva): hard-delete (only included in total cancellation path)
+    const bookedQuery = `SELECT s.id, s.fecha FROM slots s
+       JOIN reservas r ON r.slot_id = s.id
+       WHERE s.psicologo_id = ?
+         AND s.hora_inicio = ?
+         AND s.fecha >= ?
+         AND r.paciente_email = ? AND r.paciente_telefono = ?`;
 
-    // Find slots for this recurrence (including orphaned empty slots)
-    const query = `SELECT s.id, s.fecha FROM slots s
+    const orphanQuery = `SELECT s.id, s.fecha FROM slots s
        LEFT JOIN reservas r ON r.slot_id = s.id
        WHERE s.psicologo_id = ?
          AND s.hora_inicio = ?
-         AND ${dateCriteria}
-         AND (
-           (r.paciente_email = ? AND r.paciente_telefono = ?)
-           OR r.id IS NULL
-         )`;
+         AND s.fecha < ?
+         AND r.id IS NULL`;
 
-    let stmt;
-    if (isTotalCancellation) {
-      stmt = c.env.DB.prepare(query).bind(
-        recurring.psychologist_id,
-        recurring.time,
-        targetDate,
-        targetDate,
-        recurring.patient_email,
-        recurring.patient_phone
-      );
-    } else {
-      stmt = c.env.DB.prepare(query).bind(
-        recurring.psychologist_id,
-        recurring.time,
-        targetDate,
-        recurring.patient_email,
-        recurring.patient_phone
-      );
-    }
+    const bookedCandidates = await c.env.DB.prepare(bookedQuery)
+      .bind(recurring.psychologist_id, recurring.time, targetDate, recurring.patient_email, recurring.patient_phone)
+      .all<{ id: number; fecha: string }>();
 
-    const candidateSlots = await stmt.all<{ id: number; fecha: string }>();
-
-    const slotIds = candidateSlots.results
+    const bookedSlotIds = bookedCandidates.results
       .filter((s) => matchesRecurrence(s.fecha, recurring.start_date, recurring.frequency_weeks))
       .map((s) => s.id);
 
-    if (slotIds.length > 0) {
-      const batchSize = 50;
-      for (let i = 0; i < slotIds.length; i += batchSize) {
-        const chunk = slotIds.slice(i, i + batchSize);
-        const placeholders = chunk.map(() => '?').join(', ');
-        await c.env.DB.prepare(`DELETE FROM reservas WHERE slot_id IN (${placeholders})`)
-          .bind(...chunk)
-          .run();
-        await c.env.DB.prepare(`DELETE FROM slots WHERE id IN (${placeholders})`)
-          .bind(...chunk)
-          .run();
-      }
+    let orphanSlotIds: number[] = [];
+    if (isTotalCancellation) {
+      const orphanCandidates = await c.env.DB.prepare(orphanQuery)
+        .bind(recurring.psychologist_id, recurring.time, targetDate)
+        .all<{ id: number; fecha: string }>();
+      orphanSlotIds = orphanCandidates.results
+        .filter((s) => matchesRecurrence(s.fecha, recurring.start_date, recurring.frequency_weeks))
+        .map((s) => s.id);
     }
+
+    const allAffected = bookedSlotIds.length + orphanSlotIds.length;
+
+    const batchSize = 50;
+
+    // Booked slots: remove reserva and block the slot so generateSlotsForDate won't re-create it available
+    for (let i = 0; i < bookedSlotIds.length; i += batchSize) {
+      const chunk = bookedSlotIds.slice(i, i + batchSize);
+      const placeholders = chunk.map(() => '?').join(', ');
+      await c.env.DB.prepare(`DELETE FROM reservas WHERE slot_id IN (${placeholders})`).bind(...chunk).run();
+      await c.env.DB.prepare(`UPDATE slots SET disponible = 0 WHERE id IN (${placeholders})`).bind(...chunk).run();
+    }
+
+    // Past orphaned slots (no reserva, no traceability needed): hard-delete
+    for (let i = 0; i < orphanSlotIds.length; i += batchSize) {
+      const chunk = orphanSlotIds.slice(i, i + batchSize);
+      const placeholders = chunk.map(() => '?').join(', ');
+      await c.env.DB.prepare(`DELETE FROM slots WHERE id IN (${placeholders})`).bind(...chunk).run();
+    }
+
+    const slotIds = [...bookedSlotIds, ...orphanSlotIds]; // for reporting only
 
     await c.env.DB.prepare('UPDATE recurring_bookings SET active = 0 WHERE id = ?').bind(id).run();
 

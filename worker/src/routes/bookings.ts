@@ -54,9 +54,16 @@ bookingsRouter.get('/', authMiddleware, async (c) => {
 
   const result = await c.env.DB.prepare(
     `SELECT b.id, b.paciente_nombre as patient_name, b.paciente_email as patient_email, b.paciente_telefono as patient_phone, b.created_at,
-            s.id as slot_id, s.fecha as date, s.hora_inicio as start_time, s.hora_fin as end_time
+            s.id as slot_id, s.fecha as date, s.hora_inicio as start_time, s.hora_fin as end_time,
+            rb.id as recurring_booking_id
      FROM reservas b
      JOIN slots s ON b.slot_id = s.id
+     LEFT JOIN recurring_bookings rb
+       ON rb.patient_email = b.paciente_email
+       AND rb.patient_phone = b.paciente_telefono
+       AND rb."time" = s.hora_inicio
+       AND rb.psychologist_id = s.psicologo_id
+       AND rb.active = 1
      WHERE s.psicologo_id = ?
      ORDER BY s.fecha, s.hora_inicio`,
   )

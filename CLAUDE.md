@@ -5,6 +5,10 @@ Appointment scheduling system for a single psychologist.
 Patients self-manage their sessions (book, cancel, reschedule) via a public view.
 The psychologist manages availability, recurring bookings, and schedule via an admin dashboard.
 
+## Credentials
+email: admin@turnospsi.com
+password: admin123
+
 ## Repo structure
 ```
 turnos-psicologos-1/

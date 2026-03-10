@@ -120,7 +120,9 @@ slotsRouter.get('/', async (c) => {
   }
 
   // We assume there's one primary psychologist configuration
-  const psych = await c.env.DB.prepare('SELECT id, session_duration_minutes FROM psicologos LIMIT 1').first<{ id: number; session_duration_minutes: number }>();
+  const psych = await c.env.DB.prepare(
+    'SELECT id, session_duration_minutes, booking_min_hours, policy_unit FROM psicologos LIMIT 1'
+  ).first<{ id: number; session_duration_minutes: number; booking_min_hours: number; policy_unit: string }>();
   if (!psych) {
     return c.json({ success: true, data: [] });
   }
@@ -132,8 +134,37 @@ slotsRouter.get('/', async (c) => {
     'SELECT id, fecha, hora_inicio, hora_fin, disponible FROM slots WHERE psicologo_id = ? AND fecha = ? ORDER BY hora_inicio'
   ).bind(psychologistId, date).all<SlotRow>();
 
+  // Compute booking cutoff in America/Buenos_Aires (UTC-3, no DST)
+  const nowUtcMs = Date.now();
+  const BA_OFFSET_MS = -3 * 60 * 60 * 1000;
+  const nowBaMs = nowUtcMs + BA_OFFSET_MS;
+
+  const policyMinHours = psych.booking_min_hours ?? 24;
+  const policyUnit = psych.policy_unit ?? 'hours';
+  let thresholdMinutes: number;
+  if (policyUnit === 'minutes') {
+    thresholdMinutes = policyMinHours;
+  } else if (policyUnit === 'days') {
+    thresholdMinutes = policyMinHours * 24 * 60;
+  } else {
+    thresholdMinutes = policyMinHours * 60;
+  }
+
+  // Cutoff = now_utc + threshold, then shift to BA wall clock for string comparison
+  const cutoffUtcMs = nowUtcMs + thresholdMinutes * 60 * 1000;
+  const cutoffBaDt = new Date(cutoffUtcMs + BA_OFFSET_MS);
+  const cutoffDateStr = `${cutoffBaDt.getUTCFullYear()}-${String(cutoffBaDt.getUTCMonth() + 1).padStart(2, '0')}-${String(cutoffBaDt.getUTCDate()).padStart(2, '0')}`;
+  const cutoffTimeStr = `${String(cutoffBaDt.getUTCHours()).padStart(2, '0')}:${String(cutoffBaDt.getUTCMinutes()).padStart(2, '0')}`;
+
   const availableSlots = existingSlotsResult.results
-    .filter(s => Number(s.disponible) === 1)
+    .filter(s => {
+      if (Number(s.disponible) !== 1) return false;
+      // Only apply booking policy filter for today and the next few days
+      // A slot is blocked if its (date, start_time) falls within the cutoff window
+      if (s.fecha < cutoffDateStr) return false;
+      if (s.fecha === cutoffDateStr && s.hora_inicio <= cutoffTimeStr) return false;
+      return true;
+    })
     .sort((a, b) => a.hora_inicio.localeCompare(b.hora_inicio));
 
   return c.json({

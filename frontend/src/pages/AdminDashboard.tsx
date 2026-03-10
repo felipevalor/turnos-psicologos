@@ -29,6 +29,27 @@ type Tab = 'dashboard' | 'agenda' | 'create' | 'bookings' | 'recurring' | 'setti
 
 const DAY_FULL = ['Domingo', 'Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado'];
 
+function isBlockedByPolicy(
+  slotDate: string,
+  slotStartTime: string,
+  bookingMinHours: number,
+  policyUnit: 'minutes' | 'hours' | 'days',
+): boolean {
+  const nowUtcMs = Date.now();
+  const BA_OFFSET_MS = -3 * 60 * 60 * 1000;
+  let thresholdMinutes: number;
+  if (policyUnit === 'minutes') thresholdMinutes = bookingMinHours;
+  else if (policyUnit === 'days') thresholdMinutes = bookingMinHours * 24 * 60;
+  else thresholdMinutes = bookingMinHours * 60;
+  const cutoffUtcMs = nowUtcMs + thresholdMinutes * 60 * 1000;
+  const cutoffBaDt = new Date(cutoffUtcMs + BA_OFFSET_MS);
+  const cutoffDateStr = `${cutoffBaDt.getUTCFullYear()}-${String(cutoffBaDt.getUTCMonth() + 1).padStart(2, '0')}-${String(cutoffBaDt.getUTCDate()).padStart(2, '0')}`;
+  const cutoffTimeStr = `${String(cutoffBaDt.getUTCHours()).padStart(2, '0')}:${String(cutoffBaDt.getUTCMinutes()).padStart(2, '0')}`;
+  if (slotDate < cutoffDateStr) return true;
+  if (slotDate === cutoffDateStr && slotStartTime <= cutoffTimeStr) return true;
+  return false;
+}
+
 function formatDate(dateStr: string): string {
   const [y, m, d] = dateStr.split('-').map(Number);
   return new Date(y, m - 1, d).toLocaleDateString('es-AR', {
@@ -196,6 +217,12 @@ export function AdminDashboard({ psychologist, onLogout }: Props) {
   const [assignForm, setAssignForm] = useState({ patient_name: '', patient_email: '', patient_phone: '' });
   const [assignFormError, setAssignFormError] = useState('');
 
+  const todayYYYYMM = today.slice(0, 7);
+  const [bookingsSearch, setBookingsSearch] = useState('');
+  const [bookingsMonth, setBookingsMonth] = useState(todayYYYYMM);
+  const [bookingsTodayOnly, setBookingsTodayOnly] = useState(false);
+  const [bookingsType, setBookingsType] = useState<'todas' | 'recurrentes' | 'puntuales'>('todas');
+
   const weekDates = getWeekDates(weekRef);
   const weekDateStrs = weekDates.map(toDateStr);
 
@@ -260,6 +287,12 @@ export function AdminDashboard({ psychologist, onLogout }: Props) {
       // Data is loaded inside DashboardTab
     }
     if (tab === 'bookings') loadBookings();
+    if (tab !== 'bookings') {
+      setBookingsSearch('');
+      setBookingsMonth(todayYYYYMM);
+      setBookingsTodayOnly(false);
+      setBookingsType('todas');
+    }
     if (tab === 'recurring') loadRecurring();
     if (tab === 'settings') {
       getProfile().then(res => {
@@ -275,7 +308,7 @@ export function AdminDashboard({ psychologist, onLogout }: Props) {
       loadScheduleData();
       loadHolidaysData(holidaysYear);
     }
-  }, [tab, loadBookings, loadRecurring, loadScheduleData, loadHolidaysData, holidaysYear]);
+  }, [tab, loadBookings, loadRecurring, loadScheduleData, loadHolidaysData, holidaysYear, todayYYYYMM]);
 
   const handleLogout = async () => {
     await apiLogout();
@@ -638,6 +671,9 @@ export function AdminDashboard({ psychologist, onLogout }: Props) {
                           const isBooked = slot.booking_id !== null;
                           const isBlocked = slot.available === 0 && !isBooked;
                           const status = isBooked ? 'booked' : isBlocked ? 'blocked' : 'available';
+                          const hiddenByPolicy = !isBooked && !isBlocked && isBlockedByPolicy(
+                            slot.date, slot.start_time, bookingMinHours, policyUnit
+                          );
                           return (
                             <div key={slot.id} className="px-5 py-4 flex items-center gap-4">
                               <div className="flex-none">
@@ -649,6 +685,14 @@ export function AdminDashboard({ psychologist, onLogout }: Props) {
                                   <StatusBadge status={status} />
                                   {slot.recurring_booking_id !== null && (
                                     <span className="text-[10px] text-blue-500 font-bold">↺ Recurrente</span>
+                                  )}
+                                  {hiddenByPolicy && (
+                                    <span
+                                      title={`Oculto al paciente: dentro de la ventana de anticipación (${bookingMinHours} ${policyUnit === 'minutes' ? 'min' : policyUnit === 'days' ? 'día(s)' : 'h'})`}
+                                      className="inline-flex items-center gap-1 text-[10px] font-bold text-orange-500 bg-orange-50 border border-orange-200 rounded-full px-2 py-0.5"
+                                    >
+                                      🔒 Oculto al paciente
+                                    </span>
                                   )}
                                 </div>
                                 {isBooked && (
@@ -697,6 +741,7 @@ export function AdminDashboard({ psychologist, onLogout }: Props) {
                     <span className="flex items-center gap-1.5"><span className="w-2.5 h-2.5 rounded-full bg-[#4caf7d]/50 inline-block" /> Disponible</span>
                     <span className="flex items-center gap-1.5"><span className="w-2.5 h-2.5 rounded-full bg-red-300 inline-block" /> Reservado</span>
                     <span className="flex items-center gap-1.5"><span className="w-2.5 h-2.5 rounded-full bg-slate-300 inline-block" /> Bloqueado</span>
+                    <span className="flex items-center gap-1.5 text-orange-400">🔒 Oculto al paciente (ventana de anticipación)</span>
                   </div>
                 </>
               )}
@@ -846,53 +891,192 @@ export function AdminDashboard({ psychologist, onLogout }: Props) {
         )}
 
         {/* ── BOOKINGS TAB ───────────────────────────────── */}
-        {tab === 'bookings' && (
-          <div>
-            <div className="flex items-center justify-between mb-4">
-              <h2 className="text-lg font-bold text-[#1a2e4a]">Todas las reservas</h2>
-              <button onClick={loadBookings} className="text-sm text-[#1a2e4a] hover:underline font-semibold">
-                Actualizar
-              </button>
-            </div>
+        {tab === 'bookings' && (() => {
+          const MONTH_SHORT = ['Ene', 'Feb', 'Mar', 'Abr', 'May', 'Jun', 'Jul', 'Ago', 'Sep', 'Oct', 'Nov', 'Dic'];
+          const DAY_ABBR: Record<number, string> = { 0: 'Dom', 1: 'Lun', 2: 'Mar', 3: 'Mié', 4: 'Jue', 5: 'Vie', 6: 'Sáb' };
 
-            {loadingBookings ? (
-              <div className="flex justify-center py-12">
-                <div className="w-8 h-8 border-4 border-[#1a2e4a] border-t-transparent rounded-full animate-spin" />
+          function formatGroupHeader(dateStr: string): string {
+            const [y, m, d] = dateStr.split('-').map(Number);
+            const dt = new Date(y, m - 1, d);
+            return `${DAY_ABBR[dt.getDay()]}, ${d} ${MONTH_SHORT[m - 1]}`;
+          }
+
+          // Available months derived from all bookings
+          const availableMonths = Array.from(
+            new Set(bookings.map(b => b.date.slice(0, 7)))
+          ).sort();
+
+          // Filtering pipeline
+          const searchLower = bookingsSearch.trim().toLowerCase();
+          const filtered = bookings.filter(b => {
+            // Month / today filter
+            if (bookingsTodayOnly) {
+              if (b.date !== today) return false;
+            } else {
+              if (b.date.slice(0, 7) !== bookingsMonth) return false;
+            }
+            // Type filter
+            if (bookingsType === 'recurrentes' && !b.recurring_booking_id) return false;
+            if (bookingsType === 'puntuales' && b.recurring_booking_id) return false;
+            // Search filter
+            if (searchLower) {
+              const name = (b.patient_name ?? '').toLowerCase();
+              const email = (b.patient_email ?? '').toLowerCase();
+              if (!name.includes(searchLower) && !email.includes(searchLower)) return false;
+            }
+            return true;
+          });
+
+          // Group by date
+          const grouped: { date: string; sessions: typeof filtered }[] = [];
+          for (const b of filtered) {
+            const last = grouped[grouped.length - 1];
+            if (last && last.date === b.date) {
+              last.sessions.push(b);
+            } else {
+              grouped.push({ date: b.date, sessions: [b] });
+            }
+          }
+
+          return (
+            <div>
+              {/* Filter bar — sticky */}
+              <div className="sticky top-0 z-20 bg-[#f8f9fc] pb-3 space-y-3">
+                {/* Row 1: search + month + hoy */}
+                <div className="flex gap-2 flex-wrap">
+                  <div className="relative flex-1 min-w-[160px]">
+                    <svg className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                    </svg>
+                    <input
+                      type="text"
+                      placeholder="Buscar por nombre o email…"
+                      value={bookingsSearch}
+                      onChange={e => setBookingsSearch(e.target.value)}
+                      className="w-full pl-9 pr-4 py-2.5 text-sm border border-slate-200 rounded-xl bg-white focus:outline-none focus:ring-2 focus:ring-[#1a2e4a]/20"
+                    />
+                  </div>
+
+                  <select
+                    value={bookingsTodayOnly ? '' : bookingsMonth}
+                    onChange={e => {
+                      setBookingsTodayOnly(false);
+                      setBookingsMonth(e.target.value);
+                    }}
+                    disabled={bookingsTodayOnly}
+                    className="border border-slate-200 rounded-xl px-3 py-2.5 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-[#1a2e4a]/20 disabled:opacity-40"
+                  >
+                    {availableMonths.map(ym => {
+                      const [y, m] = ym.split('-').map(Number);
+                      return (
+                        <option key={ym} value={ym}>
+                          {MONTH_SHORT[m - 1]} {y}
+                        </option>
+                      );
+                    })}
+                    {availableMonths.length === 0 && (
+                      <option value={bookingsMonth}>
+                        {MONTH_SHORT[Number(bookingsMonth.split('-')[1]) - 1]} {bookingsMonth.split('-')[0]}
+                      </option>
+                    )}
+                  </select>
+
+                  <button
+                    onClick={() => {
+                      const next = !bookingsTodayOnly;
+                      setBookingsTodayOnly(next);
+                      if (!next) setBookingsMonth(todayYYYYMM);
+                    }}
+                    className={`px-4 py-2.5 rounded-xl text-sm font-semibold border transition-colors ${
+                      bookingsTodayOnly
+                        ? 'bg-[#1a2e4a] text-white border-[#1a2e4a]'
+                        : 'bg-white text-slate-600 border-slate-200 hover:border-[#1a2e4a]/40'
+                    }`}
+                  >
+                    Hoy
+                  </button>
+
+                  <button
+                    onClick={loadBookings}
+                    className="text-xs text-[#1a2e4a] hover:underline font-semibold px-1 self-center"
+                  >
+                    Actualizar
+                  </button>
+                </div>
+
+                {/* Row 2: type segmented control */}
+                <div className="flex items-center bg-slate-100 rounded-xl p-1 gap-0.5 w-fit">
+                  {(['todas', 'recurrentes', 'puntuales'] as const).map(t => (
+                    <button
+                      key={t}
+                      onClick={() => setBookingsType(t)}
+                      className={`px-3.5 py-1.5 rounded-lg text-xs font-semibold transition-colors capitalize ${
+                        bookingsType === t
+                          ? 'bg-white text-[#1a2e4a] shadow-sm'
+                          : 'text-slate-500 hover:text-slate-700'
+                      }`}
+                    >
+                      {t.charAt(0).toUpperCase() + t.slice(1)}
+                    </button>
+                  ))}
+                </div>
               </div>
-            ) : bookings.length === 0 ? (
-              <p className="text-center text-slate-400 py-12">No hay reservas registradas.</p>
-            ) : (
-              <div className="bg-white rounded-2xl border border-slate-100 overflow-hidden shadow-sm">
-                <div className="divide-y divide-slate-50">
-                  {bookings.map((b) => (
-                    <div key={b.id} className="px-5 py-4">
-                      <div className="flex items-start justify-between gap-4">
-                        <div className="flex-1 min-w-0">
-                          <p className="text-sm font-bold text-[#1a2e4a]">{b.patient_name}</p>
-                          <p className="text-xs text-slate-400 mt-0.5">{b.patient_email}</p>
-                          <p className="text-xs text-slate-400">{b.patient_phone}</p>
-                        </div>
-                        <div className="text-right flex-none">
-                          <p className="text-sm font-semibold text-slate-700 capitalize">{formatDate(b.date)}</p>
-                          <p className="text-xs text-slate-400">{b.start_time} – {b.end_time}</p>
-                          <button
-                            onClick={() => navigateToAgendaView(b.date)}
-                            className="mt-1 text-xs font-semibold text-[#1a2e4a] hover:text-[#243d61] hover:underline flex items-center justify-end gap-1 w-full"
-                          >
-                            Ver en agenda
-                            <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-                            </svg>
-                          </button>
+
+              {/* Content */}
+              {loadingBookings ? (
+                <div className="flex justify-center py-12">
+                  <div className="w-8 h-8 border-4 border-[#1a2e4a] border-t-transparent rounded-full animate-spin" />
+                </div>
+              ) : grouped.length === 0 ? (
+                <p className="text-center text-slate-400 py-12">
+                  {bookings.length === 0 ? 'No hay sesiones registradas.' : 'No hay sesiones para los filtros seleccionados.'}
+                </p>
+              ) : (
+                <div className="space-y-5">
+                  {grouped.map(group => (
+                    <div key={group.date}>
+                      <p className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-2 px-1">
+                        {group.date === today ? `Hoy — ${formatGroupHeader(group.date)}` : formatGroupHeader(group.date)}
+                      </p>
+                      <div className="bg-white rounded-2xl border border-slate-100 overflow-hidden shadow-sm">
+                        <div className="divide-y divide-slate-50">
+                          {group.sessions.map(b => (
+                            <div key={b.id} className="px-5 py-4">
+                              <div className="flex items-start justify-between gap-4">
+                                <div className="flex-1 min-w-0">
+                                  <div className="flex items-center gap-2 flex-wrap">
+                                    <p className="text-sm font-bold text-[#1a2e4a]">{b.patient_name}</p>
+                                    {b.recurring_booking_id && (
+                                      <span className="text-[10px] text-blue-500 font-bold bg-blue-50 px-1.5 py-0.5 rounded-full">↺ Recurrente</span>
+                                    )}
+                                  </div>
+                                  <p className="text-xs text-slate-400 mt-0.5">{b.patient_email}</p>
+                                  <p className="text-xs text-slate-400">{b.patient_phone}</p>
+                                </div>
+                                <div className="text-right flex-none">
+                                  <p className="text-sm font-semibold text-slate-700">{b.start_time} – {b.end_time}</p>
+                                  <button
+                                    onClick={() => navigateToAgendaView(b.date)}
+                                    className="mt-1 text-xs font-semibold text-[#1a2e4a] hover:text-[#243d61] hover:underline flex items-center justify-end gap-1 w-full"
+                                  >
+                                    Ver en agenda
+                                    <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                                    </svg>
+                                  </button>
+                                </div>
+                              </div>
+                            </div>
+                          ))}
                         </div>
                       </div>
                     </div>
                   ))}
                 </div>
-              </div>
-            )}
-          </div>
-        )}
+              )}
+            </div>
+          );
+        })()}
 
         {/* ── RECURRING TAB ──────────────────────────────── */}
         {tab === 'recurring' && (
