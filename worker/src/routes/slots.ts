@@ -200,7 +200,7 @@ slotsRouter.get('/all', authMiddleware, async (c) => {
       AND rb."time" = s.hora_inicio
       AND rb.psychologist_id = s.psicologo_id
       AND rb.active = 1
-    WHERE s.psicologo_id = ?
+    WHERE s.psicologo_id = ? AND s.disponible >= 0
   `;
   const params: (string | number)[] = [psychologistId];
 
@@ -383,7 +383,7 @@ slotsRouter.patch('/:id', authMiddleware, async (c) => {
     `SELECT s.id, s.disponible as available, b.id as booking_id
      FROM slots s
      LEFT JOIN reservas b ON b.slot_id = s.id
-     WHERE s.id = ? AND s.psicologo_id = ?`,
+     WHERE s.id = ? AND s.psicologo_id = ? AND s.disponible >= 0`,
   )
     .bind(id, psychologistId)
     .first<SlotRow & { available: number }>();
@@ -421,8 +421,8 @@ slotsRouter.delete('/:id', authMiddleware, async (c) => {
     return c.json({ success: false, error: 'No se puede eliminar un turno con reserva activa' }, 409);
   }
 
-  // Instead of DELETE, we UPDATE disponible = 0 to keep the slot blocked
-  await c.env.DB.prepare('UPDATE slots SET disponible = 0 WHERE id = ?').bind(id).run();
+  // Instead of DELETE, we UPDATE disponible = -1 to mark it as deleted while keeping the row
+  await c.env.DB.prepare('UPDATE slots SET disponible = -1 WHERE id = ?').bind(id).run();
 
   return c.json({ success: true });
 });

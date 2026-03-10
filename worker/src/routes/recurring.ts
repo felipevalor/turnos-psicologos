@@ -400,7 +400,7 @@ recurringRouter.delete('/:id', async (c) => {
       const chunk = bookedSlotIds.slice(i, i + batchSize);
       const placeholders = chunk.map(() => '?').join(', ');
       await c.env.DB.prepare(`DELETE FROM reservas WHERE slot_id IN (${placeholders})`).bind(...chunk).run();
-      await c.env.DB.prepare(`UPDATE slots SET disponible = 0 WHERE id IN (${placeholders})`).bind(...chunk).run();
+      await c.env.DB.prepare(`UPDATE slots SET disponible = -1 WHERE id IN (${placeholders})`).bind(...chunk).run();
     }
 
     // Past orphaned slots (no reserva, no traceability needed): hard-delete

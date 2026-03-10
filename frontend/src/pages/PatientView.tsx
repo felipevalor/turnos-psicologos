@@ -38,9 +38,10 @@ function generateNext14Days(): string[] {
 type CancelConfirm = {
   bookingId: number;
   recurringId: number | null;
-  step: 'choice' | 'confirm';
+  step: 'choice' | 'confirm' | 'success';
   isSeries: boolean;
   date: string;
+  startTime: string;
 };
 
 type OutsidePolicyModal = {
@@ -83,7 +84,7 @@ export function PatientView() {
 
   // Reschedule flow
   const [reschedulingBooking, setReschedulingBooking] = useState<BookingWithSlot | null>(null);
-  const [rescheduleStep, setRescheduleStep] = useState<'choice' | 'slots' | 'series-time' | 'confirm'>('choice');
+  const [rescheduleStep, setRescheduleStep] = useState<'choice' | 'slots' | 'series-time' | 'confirm' | 'success'>('choice');
   const [rescheduleType, setRescheduleType] = useState<'single' | 'series'>('single');
   const [rescheduleDate, setRescheduleDate] = useState(today);
   const [rescheduleSlots, setRescheduleSlots] = useState<Slot[]>([]);
@@ -150,9 +151,9 @@ export function PatientView() {
 
   const openCancel = (booking: BookingWithSlot) => {
     if (booking.recurring_booking_id) {
-      setShowCancelConfirm({ bookingId: booking.id, recurringId: booking.recurring_booking_id, step: 'choice', isSeries: false, date: booking.date });
+      setShowCancelConfirm({ bookingId: booking.id, recurringId: booking.recurring_booking_id, step: 'choice', isSeries: false, date: booking.date, startTime: booking.start_time });
     } else {
-      setShowCancelConfirm({ bookingId: booking.id, recurringId: null, step: 'confirm', isSeries: false, date: booking.date });
+      setShowCancelConfirm({ bookingId: booking.id, recurringId: null, step: 'confirm', isSeries: false, date: booking.date, startTime: booking.start_time });
     }
   };
 
@@ -170,14 +171,15 @@ export function PatientView() {
       : await cancelBooking(bookingId, emailArg, phoneArg);
 
     setCancelLoading(false);
-    setShowCancelConfirm(null);
 
     if (!res.success && res.error === 'outside_policy') {
+      setShowCancelConfirm(null);
       setOutsidePolicyModal({ action: 'cancel', policyHours: res.policy_hours ?? 48, whatsapp: res.whatsapp_number ?? null, psychologistName: res.psychologist_name ?? psychologistContact?.nombre ?? '', date });
       return;
     }
 
     if (res.success) {
+      setShowCancelConfirm({ ...showCancelConfirm, step: 'success' });
       setCancelMsg('Tu sesión fue cancelada.');
       if (isSeries && recurringId !== null) {
         setMyBookings(prev => prev ? prev.filter(b => b.recurring_booking_id !== recurringId) : []);
@@ -186,6 +188,7 @@ export function PatientView() {
       }
       loadSlots();
     } else {
+      setShowCancelConfirm(null);
       setCancelMsg(res.error ?? 'Error al cancelar');
     }
   };
@@ -257,7 +260,7 @@ export function PatientView() {
     }
 
     if (res.success) {
-      setReschedulingBooking(null);
+      setRescheduleStep('success');
       setCancelMsg(
         rescheduleType === 'series'
           ? 'Tus sesiones fueron reprogramadas exitosamente'
@@ -401,16 +404,6 @@ export function PatientView() {
               {cancelMsg && (
                 <div className="mt-3 p-4 bg-[#4caf7d]/10 border border-[#4caf7d]/20 rounded-xl space-y-2">
                   <p className="text-sm text-[#1e6e44]">{cancelMsg}</p>
-                  {cancelMsg.includes('cancelada') && psychologistContact?.whatsapp_number && (
-                    <a
-                      href={`https://wa.me/${psychologistContact.whatsapp_number.replace(/\D/g, '')}`}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="inline-flex items-center gap-1.5 text-sm font-bold text-[#1e6e44] underline"
-                    >
-                      Avisar por WhatsApp
-                    </a>
-                  )}
                 </div>
               )}
 
@@ -496,7 +489,11 @@ export function PatientView() {
       <BottomSheet
         isOpen={showCancelConfirm !== null}
         onClose={() => setShowCancelConfirm(null)}
-        title={showCancelConfirm?.step === 'choice' ? 'Cancelar sesión' : 'Confirmar cancelación'}
+        title={
+          showCancelConfirm?.step === 'choice' ? 'Cancelar sesión' :
+          showCancelConfirm?.step === 'success' ? 'Sesión cancelada' :
+          'Confirmar cancelación'
+        }
       >
         {showCancelConfirm && (
           <div>
@@ -535,16 +532,6 @@ export function PatientView() {
                   >
                     {cancelLoading ? 'Cancelando...' : 'Sí, cancelar'}
                   </button>
-                  {psychologistContact?.whatsapp_number && (
-                    <a
-                      href={`https://wa.me/${psychologistContact.whatsapp_number.replace(/\D/g, '')}?text=${encodeURIComponent(`Hola ${psychologistContact.nombre}, ¿cómo andás? Te escribo para avisarte que quiero cancelar nuestra sesión del ${formatDate(showCancelConfirm.date)}. ¡Gracias!`)}`}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="w-full bg-[#25d366] text-white py-3.5 rounded-xl font-bold hover:bg-[#1ebe5d] transition-colors text-center text-sm"
-                    >
-                      Contactar por WhatsApp
-                    </a>
-                  )}
                   <button
                     onClick={() =>
                       showCancelConfirm.recurringId
@@ -558,6 +545,32 @@ export function PatientView() {
                 </div>
               </div>
             )}
+
+            {showCancelConfirm.step === 'success' && (
+              <div>
+                <p className="text-sm text-slate-600 mb-6 leading-relaxed">
+                  Tu sesión fue cancelada.
+                </p>
+                <div className="flex flex-col gap-2">
+                  {psychologistContact?.whatsapp_number && (
+                    <a
+                      href={`https://wa.me/${psychologistContact.whatsapp_number.replace(/\D/g, '')}?text=${encodeURIComponent(`Hola, cancelé mi sesión del ${formatDate(showCancelConfirm.date)} a las ${showCancelConfirm.startTime}.`)}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="w-full bg-[#25d366] text-white py-3.5 rounded-xl font-bold hover:bg-[#1ebe5d] transition-colors text-center text-sm"
+                    >
+                      Avisar por WhatsApp
+                    </a>
+                  )}
+                  <button
+                    onClick={() => setShowCancelConfirm(null)}
+                    className="w-full bg-slate-100 text-slate-700 py-3.5 rounded-xl font-bold hover:bg-slate-200 transition-colors"
+                  >
+                    Cerrar
+                  </button>
+                </div>
+              </div>
+            )}
           </div>
         )}
       </BottomSheet>
@@ -566,16 +579,18 @@ export function PatientView() {
       <BottomSheet
         isOpen={reschedulingBooking !== null}
         onClose={() => setReschedulingBooking(null)}
-        title="Reprogramar sesión"
+        title={rescheduleStep === 'success' ? 'Sesión reprogramada' : 'Reprogramar sesión'}
       >
         {reschedulingBooking && (
           <div>
             {/* Current session summary */}
-            <div className="mb-5 p-4 bg-[#1a2e4a]/5 rounded-xl border border-[#1a2e4a]/10">
-              <p className="text-[10px] text-[#1a2e4a]/50 font-bold uppercase mb-1">Sesión actual</p>
-              <p className="text-sm text-[#1a2e4a] font-bold capitalize">{formatDate(reschedulingBooking.date)}</p>
-              <p className="text-xs text-[#1a2e4a]/70 font-medium">{reschedulingBooking.start_time} – {reschedulingBooking.end_time}</p>
-            </div>
+            {rescheduleStep !== 'success' && (
+              <div className="mb-5 p-4 bg-[#1a2e4a]/5 rounded-xl border border-[#1a2e4a]/10">
+                <p className="text-[10px] text-[#1a2e4a]/50 font-bold uppercase mb-1">Sesión actual</p>
+                <p className="text-sm text-[#1a2e4a] font-bold capitalize">{formatDate(reschedulingBooking.date)}</p>
+                <p className="text-xs text-[#1a2e4a]/70 font-medium">{reschedulingBooking.start_time} – {reschedulingBooking.end_time}</p>
+              </div>
+            )}
 
             {/* Step: choice (recurring only) */}
             {rescheduleStep === 'choice' && (
@@ -704,24 +719,41 @@ export function PatientView() {
                   >
                     {cancelLoading ? 'Procesando...' : 'Confirmar cambio'}
                   </button>
-                  {psychologistContact?.whatsapp_number && (
-                    <a
-                      href={`https://wa.me/${psychologistContact.whatsapp_number.replace(/\D/g, '')}?text=${encodeURIComponent(`Hola ${psychologistContact.nombre}, ¿cómo andás? Te escribo para avisarte que quiero reagendar nuestra sesión del ${formatDate(reschedulingBooking.date)}. ¡Gracias!`)}`}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="w-full bg-[#25d366] text-white py-3.5 rounded-xl font-bold hover:bg-[#1ebe5d] transition-colors text-center text-sm"
-                    >
-                      Contactar por WhatsApp
-                    </a>
-                  )}
                   <button
                     onClick={() => setRescheduleStep(rescheduleType === 'series' ? 'series-time' : 'slots')}
-                    className="text-sm text-slate-500 py-2 hover:text-slate-700 font-medium"
+                    className="w-full bg-slate-100 text-slate-700 py-3.5 rounded-xl font-bold hover:bg-slate-200 transition-colors text-sm"
                   >
                     Volver
                   </button>
                 </div>
                 {rescheduleError && <p className="text-sm text-red-500 font-medium mt-2">{rescheduleError}</p>}
+              </div>
+            )}
+
+            {/* Step: success */}
+            {rescheduleStep === 'success' && (
+              <div>
+                <p className="text-sm text-slate-600 mb-6 leading-relaxed">
+                  Tu sesión fue reprogramada.
+                </p>
+                <div className="flex flex-col gap-2">
+                  {psychologistContact?.whatsapp_number && (
+                    <a
+                      href={`https://wa.me/${psychologistContact.whatsapp_number.replace(/\D/g, '')}?text=${encodeURIComponent(`Hola, reprogramé mi sesión al ${formatDate(rescheduleType === 'single' ? rescheduleDate : rescheduleSeriesFromDate)} a las ${rescheduleType === 'single' ? rescheduleSelectedSlot!.start_time : rescheduleSeriesTime}.`)}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="w-full bg-[#25d366] text-white py-3.5 rounded-xl font-bold hover:bg-[#1ebe5d] transition-colors text-center text-sm"
+                    >
+                      Avisar por WhatsApp
+                    </a>
+                  )}
+                  <button
+                    onClick={() => setReschedulingBooking(null)}
+                    className="w-full bg-slate-100 text-slate-700 py-3.5 rounded-xl font-bold hover:bg-slate-200 transition-colors text-sm"
+                  >
+                    Cerrar
+                  </button>
+                </div>
               </div>
             )}
           </div>

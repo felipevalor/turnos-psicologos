@@ -36,9 +36,10 @@ turnos-psicologos-1/
 
 ## Database schema (production — Cloudflare D1)
 These are the EXACT table and column names. Never reference any other names.
+**NOTE: `worker/src/db/schema.sql` is now exactly synchronized with production. Any future schema changes MUST be applied to both `schema.sql` and production D1 simultaneously.**
 
 ```sql
--- Main auth table (NOT "psychologists" — that table was dropped)
+-- Main auth table
 psicologos: id, nombre, email, password_hash, session_duration_minutes,
             cancel_min_hours (default 48), reschedule_min_hours (default 48),
             booking_min_hours (default 24), whatsapp_number (nullable TEXT),
@@ -47,16 +48,16 @@ psicologos: id, nombre, email, password_hash, session_duration_minutes,
 -- Availability slots
 slots: id, psicologo_id, fecha, hora_inicio, hora_fin, disponible
 
--- Patient bookings (NOT "bookings" — that table was dropped)
+-- Patient bookings
 reservas: id, slot_id, paciente_nombre, paciente_email, paciente_telefono, created_at
 
--- Weekly availability template (uses English column names)
+-- Weekly availability template (uses English column names; psychologist_id references psicologos(id))
 weekly_schedule: id, psychologist_id, day_of_week, start_time, end_time, active
 
--- Holiday exceptions (uses English column names)
+-- Holiday exceptions (uses English column names; psychologist_id references psicologos(id))
 holiday_overrides: id, psychologist_id, date
 
--- Recurring patient sessions (uses English column names)
+-- Recurring patient sessions (uses English column names; psychologist_id references psicologos(id))
 recurring_bookings: id, psychologist_id, patient_name, patient_email, patient_phone,
                     frequency_weeks, start_date, time, active, created_at
 ```
@@ -65,7 +66,7 @@ recurring_bookings: id, psychologist_id, patient_name, patient_email, patient_ph
 - `psicologos` uses `nombre` (not `name`), `psicologo_id` in foreign keys
 - `slots` has NO `created_at`, NO `recurring_booking_id`
 - `reservas` has NO `recurring_booking_id`
-- `weekly_schedule`, `holiday_overrides`, `recurring_bookings` use `psychologist_id` (English)
+- `weekly_schedule`, `holiday_overrides`, `recurring_bookings` use `psychologist_id` (English), which references `psicologos(id)`
 - `time` and `date` are SQLite reserved words — always quote them: `"time"`, `"date"`
 - Never assume a column exists — check this schema first
 

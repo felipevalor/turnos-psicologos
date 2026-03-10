@@ -45,7 +45,7 @@ dashboardRouter.get('/', authMiddleware, async (c) => {
     // Current week total slots
     c.env.DB.prepare(`
       SELECT COUNT(*) as cnt FROM slots 
-      WHERE psicologo_id = ? 
+      WHERE psicologo_id = ? AND disponible >= 0
       AND fecha >= date('now', '-3 hours', 'weekday 1', '-7 days') 
       AND fecha <= date('now', '-3 hours', 'weekday 0')
     `).bind(psychologistId).first<CountRow>(),
@@ -61,7 +61,7 @@ dashboardRouter.get('/', authMiddleware, async (c) => {
     // Previous week total slots
     c.env.DB.prepare(`
       SELECT COUNT(*) as cnt FROM slots 
-      WHERE psicologo_id = ? 
+      WHERE psicologo_id = ? AND disponible >= 0
       AND fecha >= date('now', '-3 hours', 'weekday 1', '-14 days') 
       AND fecha <= date('now', '-3 hours', 'weekday 0', '-7 days')
     `).bind(psychologistId).first<CountRow>(),
@@ -77,7 +77,7 @@ dashboardRouter.get('/', authMiddleware, async (c) => {
     // Current month total slots
     c.env.DB.prepare(`
       SELECT COUNT(*) as cnt FROM slots 
-      WHERE psicologo_id = ? 
+      WHERE psicologo_id = ? AND disponible >= 0
       AND strftime('%Y-%m', fecha) = strftime('%Y-%m', date('now', '-3 hours'))
     `).bind(psychologistId).first<CountRow>(),
 
@@ -91,7 +91,7 @@ dashboardRouter.get('/', authMiddleware, async (c) => {
     // Previous month total slots
     c.env.DB.prepare(`
       SELECT COUNT(*) as cnt FROM slots 
-      WHERE psicologo_id = ? 
+      WHERE psicologo_id = ? AND disponible >= 0
       AND strftime('%Y-%m', fecha) = strftime('%Y-%m', date('now', '-3 hours', '-1 month'))
     `).bind(psychologistId).first<CountRow>(),
 

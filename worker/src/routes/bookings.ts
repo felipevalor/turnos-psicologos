@@ -112,7 +112,7 @@ bookingsRouter.post('/', async (c) => {
   if (!slot) {
     return c.json({ success: false, error: 'Turno no encontrado' }, 404);
   }
-  if (!slot.disponible || slot.booking_id !== null) {
+  if (slot.disponible !== 1 || slot.booking_id !== null) {
     return c.json({ success: false, error: 'El turno no está disponible' }, 409);
   }
 
@@ -293,7 +293,7 @@ bookingsRouter.patch('/:id', async (c) => {
   if (!newSlot) {
     return c.json({ success: false, error: 'El nuevo turno no existe' }, 404);
   }
-  if (!newSlot.disponible || newSlot.booking_id !== null) {
+  if (newSlot.disponible !== 1 || newSlot.booking_id !== null) {
     return c.json({ success: false, error: 'Este turno ya no está disponible, por favor elegí otro' }, 409);
   }
 
