@@ -1,4 +1,5 @@
 import type { Slot, SlotWithBooking, BookingWithSlot, BookingResult, RecurringBooking, WeeklyDaySchedule, Holiday, DashboardData } from './types';
+import { getTodayDateString } from './date';
 
 export type ApiResponse<T = void> = {
   success: boolean;
@@ -91,11 +92,11 @@ export const removeHolidayOverride = (date: string) =>
 export const getSlots = async (date: string) => {
   const result = await request<Slot[]>(`/slots?date=${date}`);
   if (result.success && result.data) {
-    const today = new Date();
-    const isToday =
-      today.toISOString().split('T')[0] === date;
+    const isToday = getTodayDateString() === date;
     if (isToday) {
-      const nowHours = today.getHours() + today.getMinutes() / 60;
+      const baMs = Date.now() - 3 * 3600 * 1000;
+      const ba = new Date(baMs);
+      const nowHours = ba.getUTCHours() + ba.getUTCMinutes() / 60;
       result.data = result.data.filter(s => {
         const [h, m] = s.start_time.split(':').map(Number);
         const slotHours = h + m / 60;

@@ -103,8 +103,9 @@ export function PatientView() {
     if (res.success && res.data) {
       let fetched = res.data;
       if (selectedDate === today) {
-        const now = new Date();
-        const currentTime = `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
+        const baMs = Date.now() - 3 * 3600 * 1000;
+        const ba = new Date(baMs);
+        const currentTime = `${String(ba.getUTCHours()).padStart(2, '0')}:${String(ba.getUTCMinutes()).padStart(2, '0')}`;
         fetched = fetched.filter(s => s.start_time > currentTime);
       }
       setSlots(fetched);

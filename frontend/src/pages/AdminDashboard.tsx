@@ -1120,7 +1120,7 @@ export function AdminDashboard({ psychologist, onLogout }: Props) {
                     <input
                       type="date" required
                       value={recurringForm.start_date}
-                      onChange={(e) => setRecurringForm(f => ({ ...f, start_date: e.target.value }))}
+                      onChange={(e) => { const d = e.target.value; setRecurringForm(prev => ({ ...prev, start_date: d })); }}
                       className="w-full border border-slate-200 rounded-xl px-3 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-[#1a2e4a]/20"
                     />
                   </div>
