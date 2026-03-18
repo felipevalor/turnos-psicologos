@@ -6,6 +6,7 @@ import { DashboardTab } from '../components/DashboardTab';
 import { SessionManagementModal } from '../components/SessionManagementModal';
 import { RecurringManagementModal } from '../components/RecurringManagementModal';
 import {
+  getSlots,
   getAllSlots,
   getBookings,
   updateSlot,
@@ -228,6 +229,7 @@ export function AdminDashboard({ psychologist, onLogout }: Props) {
 
   const loadSlots = useCallback(async (dates: string[]) => {
     setLoadingSlots(true);
+    await Promise.all(dates.map(date => getSlots(date)));
     const results = await Promise.all(dates.map(date => getAllSlots({ date })));
     setLoadingSlots(false);
     const allFetchedSlots = results
@@ -714,15 +716,30 @@ export function AdminDashboard({ psychologist, onLogout }: Props) {
                               )}
                               {!isBooked && (
                                 <div className="flex gap-2 flex-none">
-                                  <button
-                                    onClick={() => openBlockModal(slot)}
-                                    className={`text-xs font-semibold px-3 py-1.5 rounded-lg transition-colors ${isBlocked
-                                      ? 'bg-[#4caf7d]/10 text-[#1e6e44] hover:bg-[#4caf7d]/20'
-                                      : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
-                                      }`}
-                                  >
-                                    {isBlocked ? 'Liberar' : 'Bloquear'}
-                                  </button>
+                                  {!isBlocked && (
+                                    <button
+                                      onClick={() => openBlockModal(slot)}
+                                      className="text-xs font-semibold px-3 py-1.5 rounded-lg bg-[#1a2e4a] text-white hover:bg-[#243d61] transition-colors"
+                                    >
+                                      + Agregar
+                                    </button>
+                                  )}
+                                  {isBlocked && (
+                                    <button
+                                      onClick={() => openBlockModal(slot)}
+                                      className="text-xs font-semibold px-3 py-1.5 rounded-lg bg-[#4caf7d]/10 text-[#1e6e44] hover:bg-[#4caf7d]/20 transition-colors"
+                                    >
+                                      Liberar
+                                    </button>
+                                  )}
+                                  {!isBlocked && (
+                                    <button
+                                      onClick={() => handleToggleBlock(slot)}
+                                      className="text-xs font-semibold px-3 py-1.5 rounded-lg bg-slate-100 text-slate-500 hover:bg-slate-200 transition-colors"
+                                    >
+                                      Bloquear
+                                    </button>
+                                  )}
                                   <button
                                     onClick={() => requestDelete(slot.id)}
                                     className="text-xs font-semibold px-3 py-1.5 rounded-lg bg-red-50 text-red-500 hover:bg-red-100 transition-colors"
@@ -1448,17 +1465,6 @@ export function AdminDashboard({ psychologist, onLogout }: Props) {
         {selectedSlotForBlock && (
           <div className="space-y-6">
             <div>
-              <h4 className="font-bold text-[#1a2e4a] mb-1">Bloquear turno</h4>
-              <p className="text-sm text-slate-500 mb-3">Nadie podrá reservar este horario.</p>
-              <button
-                onClick={handleSimpleBlock}
-                className="w-full bg-slate-100 text-slate-800 rounded-xl py-3 text-sm font-semibold hover:bg-slate-200 transition-colors"
-              >
-                Bloquear
-              </button>
-            </div>
-
-            <div className="border-t border-slate-100 pt-6">
               <h4 className="font-bold text-[#1a2e4a] mb-1">Asignar paciente</h4>
               <p className="text-sm text-slate-500 mb-4">Registrá un paciente que ya coordinó por WhatsApp.</p>
               <form onSubmit={handleAssignSubmit} className="space-y-3">
@@ -1488,6 +1494,17 @@ export function AdminDashboard({ psychologist, onLogout }: Props) {
                   Asignar paciente
                 </button>
               </form>
+            </div>
+
+            <div className="border-t border-slate-100 pt-6">
+              <h4 className="font-bold text-slate-500 mb-1 text-sm">Bloquear turno</h4>
+              <p className="text-xs text-slate-400 mb-3">Nadie podrá reservar este horario.</p>
+              <button
+                onClick={handleSimpleBlock}
+                className="w-full bg-slate-100 text-slate-600 rounded-xl py-2.5 text-sm font-semibold hover:bg-slate-200 transition-colors"
+              >
+                Bloquear
+              </button>
             </div>
           </div>
         )}
