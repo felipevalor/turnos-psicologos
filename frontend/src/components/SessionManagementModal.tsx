@@ -35,7 +35,7 @@ export function SessionManagementModal({ slot, onClose, onSuccess, onManageRecur
 
     // Reschedule state
     const [dates] = useState(getNext14Days());
-    const [selectedDate, setSelectedDate] = useState(dates[0]);
+    const [selectedDate, setSelectedDate] = useState(dates[1]);
     const [availableSlots, setAvailableSlots] = useState<Slot[]>([]);
     const [loadingSlots, setLoadingSlots] = useState(false);
     const [selectedNewSlotId, setSelectedNewSlotId] = useState<number | null>(null);
