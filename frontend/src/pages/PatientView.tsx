@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
+import { Logo } from '../components/Logo';
 import { SlotGrid } from '../components/SlotGrid';
 import { BookingModal } from '../components/BookingModal';
 import { BottomSheet } from '../components/BottomSheet';
@@ -27,6 +28,21 @@ function formatDateShort(dateStr: string): string {
 }
 
 import { getTodayDateString, addDaysToLocal } from '../lib/date';
+
+export async function findFirstAvailableDate(
+  dates: string[],
+  fetchSlots: (date: string) => Promise<{ success: boolean; data?: { id: number; start_time: string }[] }>,
+  _todayStr: string,
+  onScanned?: (date: string, hasSlots: boolean) => void,
+): Promise<string> {
+  for (const date of dates) {
+    const res = await fetchSlots(date);
+    const effectiveHasSlots = res.success && !!res.data && res.data.length > 0;
+    onScanned?.(date, effectiveHasSlots);
+    if (effectiveHasSlots) return date;
+  }
+  return dates[0];
+}
 
 function generateNext14Days(): string[] {
   return Array.from({ length: 14 }, (_, i) => {
@@ -60,6 +76,7 @@ export function PatientView() {
 
   // Booking section
   const [selectedDate, setSelectedDate] = useState(today);
+  const [initializing, setInitializing] = useState(true);
   const [slots, setSlots] = useState<Slot[]>([]);
   const [loadingSlots, setLoadingSlots] = useState(false);
   const [selectedSlot, setSelectedSlot] = useState<Slot | null>(null);
@@ -113,9 +130,17 @@ export function PatientView() {
   }, [selectedDate, today]);
 
   useEffect(() => {
+    if (initializing) return;
     setBookingSuccess(null);
     loadSlots();
-  }, [loadSlots]);
+  }, [loadSlots, initializing]);
+
+  useEffect(() => {
+    findFirstAvailableDate(stripDates, getSlots, today).then(date => {
+      setSelectedDate(date);
+      setInitializing(false);
+    });
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
     getContact().then(res => { if (res.success && res.data) setPsychologistContact(res.data); });
@@ -279,16 +304,8 @@ export function PatientView() {
       {/* Sticky header + week strip */}
       <header className="bg-[#1a2e4a] text-white sticky top-0 z-30 shadow-lg">
         <div className="max-w-2xl mx-auto px-4 pt-4 pb-2 flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <div className="w-9 h-9 rounded-full bg-white/15 flex items-center justify-center">
-              <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
-              </svg>
-            </div>
-            <div>
-              <h1 className="text-base font-bold leading-tight">Turnos Psico</h1>
-              <p className="text-[11px] text-white/60">Agendá tu sesión</p>
-            </div>
+          <div className="flex items-center">
+            <Logo className="h-8 w-auto" />
           </div>
           <a href="/admin" className="text-white border border-white/40 hover:border-white px-3 py-1.5 rounded-md text-sm font-medium transition-colors">
             Soy Psicólogo
