@@ -32,7 +32,6 @@ import { getTodayDateString, addDaysToLocal } from '../lib/date';
 export async function findFirstAvailableDate(
   dates: string[],
   fetchSlots: (date: string) => Promise<{ success: boolean; data?: { id: number; start_time: string }[] }>,
-  _todayStr: string,
   onScanned?: (date: string, hasSlots: boolean) => void,
 ): Promise<string> {
   for (const date of dates) {
@@ -50,6 +49,9 @@ function generateNext14Days(): string[] {
     return addDaysToLocal(d, i);
   });
 }
+
+const TODAY_DATE_STRING = getTodayDateString();
+const STRIP_DATES = generateNext14Days();
 
 type CancelConfirm = {
   bookingId: number;
@@ -71,11 +73,8 @@ type OutsidePolicyModal = {
 type PsychologistContact = { nombre: string; whatsapp_number: string | null };
 
 export function PatientView() {
-  const today = getTodayDateString();
-  const stripDates = generateNext14Days();
-
   // Booking section
-  const [selectedDate, setSelectedDate] = useState(today);
+  const [selectedDate, setSelectedDate] = useState(TODAY_DATE_STRING);
   const [initializing, setInitializing] = useState(true);
   const [slots, setSlots] = useState<Slot[]>([]);
   const [loadingSlots, setLoadingSlots] = useState(false);
@@ -103,12 +102,12 @@ export function PatientView() {
   const [reschedulingBooking, setReschedulingBooking] = useState<BookingWithSlot | null>(null);
   const [rescheduleStep, setRescheduleStep] = useState<'choice' | 'slots' | 'series-time' | 'confirm' | 'success'>('choice');
   const [rescheduleType, setRescheduleType] = useState<'single' | 'series'>('single');
-  const [rescheduleDate, setRescheduleDate] = useState(today);
+  const [rescheduleDate, setRescheduleDate] = useState(TODAY_DATE_STRING);
   const [rescheduleSlots, setRescheduleSlots] = useState<Slot[]>([]);
   const [rescheduleLoadingSlots, setRescheduleLoadingSlots] = useState(false);
   const [rescheduleSelectedSlot, setRescheduleSelectedSlot] = useState<Slot | null>(null);
   const [rescheduleSeriesTime, setRescheduleSeriesTime] = useState('');
-  const [rescheduleSeriesFromDate, setRescheduleSeriesFromDate] = useState(today);
+  const [rescheduleSeriesFromDate, setRescheduleSeriesFromDate] = useState(TODAY_DATE_STRING);
   const [rescheduleError, setRescheduleError] = useState('');
 
   const datePickerRef = useRef<HTMLInputElement>(null);
@@ -119,7 +118,7 @@ export function PatientView() {
     setLoadingSlots(false);
     if (res.success && res.data) {
       let fetched = res.data;
-      if (selectedDate === today) {
+      if (selectedDate === TODAY_DATE_STRING) {
         const baMs = Date.now() - 3 * 3600 * 1000;
         const ba = new Date(baMs);
         const currentTime = `${String(ba.getUTCHours()).padStart(2, '0')}:${String(ba.getUTCMinutes()).padStart(2, '0')}`;
@@ -127,7 +126,7 @@ export function PatientView() {
       }
       setSlots(fetched);
     }
-  }, [selectedDate, today]);
+  }, [selectedDate]);
 
   useEffect(() => {
     if (initializing) return;
@@ -136,11 +135,11 @@ export function PatientView() {
   }, [loadSlots, initializing]);
 
   useEffect(() => {
-    findFirstAvailableDate(stripDates, getSlots, today).then(date => {
+    findFirstAvailableDate(STRIP_DATES, getSlots).then(date => {
       setSelectedDate(date);
       setInitializing(false);
     });
-  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+  }, []);
 
   useEffect(() => {
     getContact().then(res => { if (res.success && res.data) setPsychologistContact(res.data); });
@@ -227,7 +226,7 @@ export function PatientView() {
     setRescheduleLoadingSlots(false);
     if (res.success && res.data) {
       let fetched = res.data;
-      if (date === today) {
+      if (date === TODAY_DATE_STRING) {
         const nowBA = new Date(new Date().toLocaleString('en-US', { timeZone: 'America/Buenos_Aires' }));
         const currentTime = `${String(nowBA.getHours()).padStart(2, '0')}:${String(nowBA.getMinutes()).padStart(2, '0')}`;
         fetched = fetched.filter(s => s.start_time > currentTime);
@@ -239,7 +238,7 @@ export function PatientView() {
   const handleStartReschedule = (booking: BookingWithSlot) => {
     setReschedulingBooking(booking);
     setRescheduleError('');
-    setRescheduleDate(today);
+    setRescheduleDate(TODAY_DATE_STRING);
     setRescheduleSelectedSlot(null);
     setRescheduleSeriesTime('');
     setRescheduleSeriesFromDate(booking.date);
@@ -247,7 +246,7 @@ export function PatientView() {
       setRescheduleStep('choice');
     } else {
       setRescheduleType('single');
-      loadRescheduleSlots(today);
+      loadRescheduleSlots(TODAY_DATE_STRING);
       setRescheduleStep('slots');
     }
   };
@@ -313,7 +312,7 @@ export function PatientView() {
         </div>
         <div className="max-w-2xl mx-auto px-4 pb-4 flex items-center gap-2">
           <div className="flex-1 min-w-0">
-            <WeekStrip dates={stripDates} selectedDate={selectedDate} onSelect={setSelectedDate} />
+            <WeekStrip dates={STRIP_DATES} selectedDate={selectedDate} onSelect={setSelectedDate} />
           </div>
           <div className="relative flex-none">
             <button
@@ -328,7 +327,7 @@ export function PatientView() {
             <input
               ref={datePickerRef}
               type="date"
-              min={today}
+              min={TODAY_DATE_STRING}
               className="absolute inset-0 opacity-0 w-full h-full cursor-pointer"
               onChange={(e) => { if (e.target.value) setSelectedDate(e.target.value); }}
             />
@@ -364,7 +363,7 @@ export function PatientView() {
         <section className="bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden">
           <div className="px-5 pt-5 pb-3 border-b border-slate-50">
             <h2 className="text-base font-bold text-[#1a2e4a] capitalize">
-              {selectedDate === today ? 'Hoy' : formatDateShort(selectedDate)}
+              {selectedDate === TODAY_DATE_STRING ? 'Hoy' : formatDateShort(selectedDate)}
             </h2>
             <p className="text-xs text-slate-400 mt-0.5 capitalize">{formatDate(selectedDate)}</p>
           </div>
@@ -637,7 +636,7 @@ export function PatientView() {
                 <label className="block text-sm font-bold text-[#1a2e4a]">Elegí la nueva fecha</label>
                 <input
                   type="date"
-                  min={today}
+                  min={TODAY_DATE_STRING}
                   value={rescheduleDate}
                   onChange={(e) => { setRescheduleDate(e.target.value); loadRescheduleSlots(e.target.value); }}
                   className="w-full border border-slate-200 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-[#1a2e4a]/20"
@@ -666,7 +665,7 @@ export function PatientView() {
                   <label className="block text-sm font-bold text-[#1a2e4a] mb-1.5">Desde qué fecha</label>
                   <input
                     type="date"
-                    min={today}
+                    min={TODAY_DATE_STRING}
                     value={rescheduleSeriesFromDate}
                     onChange={(e) => setRescheduleSeriesFromDate(e.target.value)}
                     className="w-full border border-slate-200 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-[#1a2e4a]/20"
