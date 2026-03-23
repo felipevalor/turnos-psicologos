@@ -77,7 +77,7 @@ export function BookingModal({ slot, onClose, onSuccess }: Props) {
             placeholder="+5491112345678"
             className="w-full border border-slate-200 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-[#1a2e4a]/30 focus:border-[#1a2e4a]/50"
           />
-          <p className="text-xs text-slate-400 mt-1">Formato: +5491112345678</p>
+          <p className="text-xs text-slate-400 mt-1">Ej: +5491156781234 (código de país + área + número)</p>
         </div>
 
         {error && (

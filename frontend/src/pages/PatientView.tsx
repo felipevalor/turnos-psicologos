@@ -371,6 +371,7 @@ export function PatientView() {
                 {formatDateShort(bookingSuccess.slot.date)} · {bookingSuccess.slot.start_time} – {bookingSuccess.slot.end_time}
               </p>
               <p className="text-xs text-[#1e6e44]/70 mt-0.5">A nombre de {bookingSuccess.patient.name}</p>
+              <p className="text-xs text-[#1e6e44]/60 mt-1">Guardá este número de sesión o buscala desde "Mis sesiones" con tu email.</p>
               {bookingWarning && (
                 <p className="text-xs text-amber-700 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2 mt-2 leading-relaxed">
                   Nota: esta sesión está dentro del plazo mínimo de {bookingWarning.policyHours}hs. El psicólogo podría no poder confirmarla. Si tenés dudas, contactalo directamente.
@@ -388,9 +389,16 @@ export function PatientView() {
         {/* Slots section */}
         <section className="bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden">
           <div className="px-5 pt-5 pb-3 border-b border-slate-50">
-            <h2 className="text-base font-bold text-[#1a2e4a] capitalize">
-              {selectedDate === TODAY_DATE_STRING ? 'Hoy' : formatDateShort(selectedDate)}
-            </h2>
+            <div className="flex items-baseline justify-between gap-2">
+              <h2 className="text-base font-bold text-[#1a2e4a] capitalize">
+                {selectedDate === TODAY_DATE_STRING ? 'Hoy' : formatDateShort(selectedDate)}
+              </h2>
+              {slots.length > 0 && (
+                <span className="text-xs text-slate-400 font-medium">
+                  {slots.length} horario{slots.length !== 1 ? 's' : ''}
+                </span>
+              )}
+            </div>
             <p className="text-xs text-slate-400 mt-0.5 capitalize">{formatDate(selectedDate)}</p>
           </div>
           <div className="p-5">
