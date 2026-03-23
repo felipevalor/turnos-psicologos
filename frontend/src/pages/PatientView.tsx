@@ -4,10 +4,12 @@ import { SlotGrid } from '../components/SlotGrid';
 import { BookingModal } from '../components/BookingModal';
 import { BottomSheet } from '../components/BottomSheet';
 import { WeekStrip } from '../components/WeekStrip';
+import { AddToCalendarButton } from '../components/AddToCalendarButton';
 import {
   getSlots, searchMyBookings, cancelBooking, rescheduleBooking,
   rescheduleRecurring, cancelRecurring, getContact,
 } from '../lib/api';
+import { buildSessionEvent } from '../lib/googleCalendar';
 import type { Slot, BookingResult, BookingWithSlot } from '../lib/types';
 
 
@@ -371,25 +373,30 @@ export function PatientView() {
 
         {/* Booking success banner */}
         {bookingSuccess && (
-          <div className="bg-[#4caf7d]/10 border border-[#4caf7d]/30 rounded-2xl p-4 flex items-start justify-between gap-3">
-            <div>
-              <p className="font-bold text-[#1e6e44] text-sm">¡Sesión confirmada!</p>
-              <p className="text-sm text-[#1e6e44] mt-0.5 capitalize">
-                {formatDateShort(bookingSuccess.slot.date)} · {bookingSuccess.slot.start_time} – {bookingSuccess.slot.end_time}
-              </p>
-              <p className="text-xs text-[#1e6e44]/70 mt-0.5">A nombre de {bookingSuccess.patient.name}</p>
-              <p className="text-xs text-[#1e6e44]/60 mt-1">Guardá este número de sesión o buscala desde "Mis sesiones" con tu email.</p>
-              {bookingWarning && (
-                <p className="text-xs text-amber-700 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2 mt-2 leading-relaxed">
-                  Nota: esta sesión está dentro del plazo mínimo de {bookingWarning.policyHours}hs. El psicólogo podría no poder confirmarla. Si tenés dudas, contactalo directamente.
+          <div className="bg-[#4caf7d]/10 border border-[#4caf7d]/30 rounded-2xl p-4">
+            <div className="flex items-start justify-between gap-3">
+              <div>
+                <p className="font-bold text-[#1e6e44] text-sm">¡Sesión confirmada!</p>
+                <p className="text-sm text-[#1e6e44] mt-0.5 capitalize">
+                  {formatDateShort(bookingSuccess.slot.date)} · {bookingSuccess.slot.start_time} – {bookingSuccess.slot.end_time}
                 </p>
-              )}
+                <p className="text-xs text-[#1e6e44]/70 mt-0.5">A nombre de {bookingSuccess.patient.name}</p>
+                <p className="text-xs text-[#1e6e44]/60 mt-1">Guardá este número de sesión o buscala desde "Mis sesiones" con tu email.</p>
+                {bookingWarning && (
+                  <p className="text-xs text-amber-700 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2 mt-2 leading-relaxed">
+                    Nota: esta sesión está dentro del plazo mínimo de {bookingWarning.policyHours}hs. El psicólogo podría no poder confirmarla. Si tenés dudas, contactalo directamente.
+                  </p>
+                )}
+              </div>
+              <button onClick={() => { setBookingSuccess(null); setBookingWarning(null); }} className="text-[#1e6e44]/60 hover:text-[#1e6e44] mt-0.5 flex-none">
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
             </div>
-            <button onClick={() => { setBookingSuccess(null); setBookingWarning(null); }} className="text-[#1e6e44]/60 hover:text-[#1e6e44] mt-0.5 flex-none">
-              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-              </svg>
-            </button>
+            <AddToCalendarButton
+              event={buildSessionEvent(bookingSuccess.slot, bookingSuccess.patient.name, psychologistContact?.nombre)}
+            />
           </div>
         )}
 
@@ -606,10 +613,18 @@ export function PatientView() {
 
             {showCancelConfirm.step === 'success' && (
               <div>
-                <p className="text-sm text-slate-600 mb-6 leading-relaxed">
+                <p className="text-sm text-slate-600 mb-4 leading-relaxed">
                   Tu sesión fue cancelada.
                 </p>
                 <div className="flex flex-col gap-2">
+                  <AddToCalendarButton
+                    variant="cancel"
+                    event={buildSessionEvent(
+                      { date: showCancelConfirm.date, start_time: showCancelConfirm.startTime, end_time: showCancelConfirm.startTime },
+                      cancelEmail,
+                      psychologistContact?.nombre,
+                    )}
+                  />
                   {psychologistContact?.whatsapp_number && (
                     <a
                       href={`https://wa.me/${psychologistContact.whatsapp_number.replace(/\D/g, '')}?text=${encodeURIComponent(`Hola, cancelé mi sesión del ${formatDate(showCancelConfirm.date)} a las ${showCancelConfirm.startTime}.`)}`}
@@ -791,10 +806,28 @@ export function PatientView() {
             {/* Step: success */}
             {rescheduleStep === 'success' && (
               <div>
-                <p className="text-sm text-slate-600 mb-6 leading-relaxed">
+                <p className="text-sm text-slate-600 mb-4 leading-relaxed">
                   Tu sesión fue reprogramada.
                 </p>
                 <div className="flex flex-col gap-2">
+                  {rescheduleType === 'single' && rescheduleSelectedSlot && (
+                    <AddToCalendarButton
+                      event={buildSessionEvent(
+                        { date: rescheduleDate, start_time: rescheduleSelectedSlot.start_time, end_time: rescheduleSelectedSlot.end_time },
+                        cancelEmail,
+                        psychologistContact?.nombre,
+                      )}
+                    />
+                  )}
+                  {rescheduleType === 'series' && rescheduleSeriesTime && (
+                    <AddToCalendarButton
+                      event={buildSessionEvent(
+                        { date: rescheduleSeriesFromDate, start_time: rescheduleSeriesTime, end_time: rescheduleSeriesTime },
+                        cancelEmail,
+                        psychologistContact?.nombre,
+                      )}
+                    />
+                  )}
                   {psychologistContact?.whatsapp_number && (
                     <a
                       href={`https://wa.me/${psychologistContact.whatsapp_number.replace(/\D/g, '')}?text=${encodeURIComponent(`Hola, reprogramé mi sesión al ${formatDate(rescheduleType === 'single' ? rescheduleDate : rescheduleSeriesFromDate)} a las ${rescheduleType === 'single' ? rescheduleSelectedSlot!.start_time : rescheduleSeriesTime}.`)}`}
