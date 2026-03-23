@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
+import { useNotifications } from '../lib/NotificationContext';
 import { SlotForm } from '../components/SlotForm';
 import { BottomSheet } from '../components/BottomSheet';
 import { StatusBadge } from '../components/StatusBadge';
@@ -172,6 +173,7 @@ const TAB_ITEMS: { id: Tab; label: string; icon: React.ReactNode }[] = [
 import { getTodayDateString } from '../lib/date';
 
 export function AdminDashboard({ psychologist, onLogout }: Props) {
+  const { showToast } = useNotifications();
   const today = getTodayDateString();
   const [tab, setTab] = useState<Tab>('dashboard');
   const [agendaView, setAgendaView] = useState<'dia' | 'semana' | 'mes'>('semana');
@@ -184,8 +186,6 @@ export function AdminDashboard({ psychologist, onLogout }: Props) {
   const [loadingSlots, setLoadingSlots] = useState(false);
   const [loadingBookings, setLoadingBookings] = useState(false);
   const [loadingRecurring, setLoadingRecurring] = useState(false);
-  const [actionError, setActionError] = useState('');
-  const [actionSuccess, setActionSuccess] = useState('');
   const [dashboardKey, setDashboardKey] = useState(0);
   const [deleteModalOpen, setDeleteModalOpen] = useState(false);
   const [slotToDelete, setSlotToDelete] = useState<number | null>(null);
@@ -197,11 +197,7 @@ export function AdminDashboard({ psychologist, onLogout }: Props) {
     patient_name: '', patient_email: '', patient_phone: '',
     start_date: '', time: '', frequency_weeks: 1,
   });
-  const [recurringFormError, setRecurringFormError] = useState('');
-  const [recurringFormSuccess, setRecurringFormSuccess] = useState('');
   const [sessionDuration, setSessionDuration] = useState<number>(psychologist.session_duration_minutes || 45);
-  const [settingsSuccess, setSettingsSuccess] = useState('');
-  const [settingsError, setSettingsError] = useState('');
   const [cancelMinHours, setCancelMinHours] = useState(psychologist.cancel_min_hours ?? 48);
   const [rescheduleMinHours, setRescheduleMinHours] = useState(psychologist.reschedule_min_hours ?? 48);
   const [bookingMinHours, setBookingMinHours] = useState(psychologist.booking_min_hours ?? 24);
@@ -209,17 +205,12 @@ export function AdminDashboard({ psychologist, onLogout }: Props) {
   const [whatsappNumber, setWhatsappNumber] = useState(psychologist.whatsapp_number ?? '');
   const [notesPatient, setNotesPatient] = useState<{ email: string; name: string } | null>(null);
   const [isNotesModalOpen, setIsNotesModalOpen] = useState(false);
-  const [policiesSuccess, setPoliciesSuccess] = useState('');
-  const [policiesError, setPoliciesError] = useState('');
   const [schedule, setSchedule] = useState<WeeklyDaySchedule[]>([]);
-  const [scheduleSuccess, setScheduleSuccess] = useState('');
-  const [scheduleError, setScheduleError] = useState('');
   const [holidays, setHolidays] = useState<Holiday[]>([]);
   const [holidaysYear, setHolidaysYear] = useState<number>(new Date().getFullYear());
   const [blockModalOpen, setBlockModalOpen] = useState(false);
   const [selectedSlotForBlock, setSelectedSlotForBlock] = useState<SlotWithBooking | null>(null);
   const [assignForm, setAssignForm] = useState({ patient_name: '', patient_email: '', patient_phone: '' });
-  const [assignFormError, setAssignFormError] = useState('');
 
   const todayYYYYMM = today.slice(0, 7);
   const [bookingsSearch, setBookingsSearch] = useState('');
@@ -328,14 +319,13 @@ export function AdminDashboard({ psychologist, onLogout }: Props) {
   };
 
   const handleToggleBlock = async (slot: SlotWithBooking) => {
-    setActionError('');
-    setActionSuccess('');
     const newAvailable = slot.available === 1 ? 0 : 1;
     const res = await updateSlot(slot.id, newAvailable as 0 | 1);
     if (res.success) {
       setSlots(prev => prev.map(s => s.id === slot.id ? { ...s, available: newAvailable } : s));
+      showToast(newAvailable === 0 ? 'Turno bloqueado' : 'Turno liberado', 'success');
     } else {
-      setActionError(res.error ?? 'Error al actualizar el turno');
+      showToast(res.error ?? 'Error al actualizar el turno', 'error');
     }
   };
 
@@ -349,15 +339,12 @@ export function AdminDashboard({ psychologist, onLogout }: Props) {
     const slotId = slotToDelete;
     setDeleteModalOpen(false);
     setSlotToDelete(null);
-    setActionError('');
-    setActionSuccess('');
     const res = await deleteSlot(slotId);
     if (res.success) {
       setSlots(prev => prev.filter(s => s.id !== slotId));
-      setActionSuccess('Turno borrado correctamente.');
-      setTimeout(() => setActionSuccess(''), 3000);
+      showToast('Turno borrado correctamente', 'success');
     } else {
-      setActionError(res.error ?? 'Error al eliminar el turno');
+      showToast(res.error ?? 'Error al eliminar el turno', 'error');
     }
   };
 
@@ -367,7 +354,6 @@ export function AdminDashboard({ psychologist, onLogout }: Props) {
     } else {
       setSelectedSlotForBlock(slot);
       setAssignForm({ patient_name: '', patient_email: '', patient_phone: '' });
-      setAssignFormError('');
       setBlockModalOpen(true);
     }
   };
@@ -381,29 +367,25 @@ export function AdminDashboard({ psychologist, onLogout }: Props) {
   const handleAssignSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!selectedSlotForBlock) return;
-    setAssignFormError('');
     const res = await createBooking({ slot_id: selectedSlotForBlock.id, ...assignForm });
     if (res.success) {
       setBlockModalOpen(false);
+      showToast('Paciente asignado correctamente', 'success');
       loadSlots(agendaView === 'mes' ? monthDatesStr.split(',') : weekDateStrs);
     } else {
-      setAssignFormError(res.error ?? 'Error al asignar paciente');
+      showToast(res.error ?? 'Error al asignar paciente', 'error');
     }
   };
 
   const handleSaveSettings = async (e: React.FormEvent) => {
     e.preventDefault();
-    setSettingsError('');
-    setSettingsSuccess('');
     const res = await updateProfile({ session_duration_minutes: sessionDuration });
-    if (res.success) setSettingsSuccess('Duración de sesión actualizada correctamente.');
-    else setSettingsError(res.error ?? 'Error al actualizar configuración');
+    if (res.success) showToast('Duración de sesión actualizada correctamente', 'success');
+    else showToast(res.error ?? 'Error al actualizar configuración', 'error');
   };
 
   const handleSavePolicies = async (e: React.FormEvent) => {
     e.preventDefault();
-    setPoliciesError('');
-    setPoliciesSuccess('');
     const res = await updateProfile({
       cancel_min_hours: cancelMinHours,
       reschedule_min_hours: rescheduleMinHours,
@@ -411,17 +393,15 @@ export function AdminDashboard({ psychologist, onLogout }: Props) {
       whatsapp_number: whatsappNumber || null,
       policy_unit: policyUnit,
     });
-    if (res.success) setPoliciesSuccess('Políticas guardadas correctamente.');
-    else setPoliciesError(res.error ?? 'Error al guardar políticas');
+    if (res.success) showToast('Políticas guardadas correctamente', 'success');
+    else showToast(res.error ?? 'Error al guardar políticas', 'error');
   };
 
   const handleSaveSchedule = async (e: React.FormEvent) => {
     e.preventDefault();
-    setScheduleError('');
-    setScheduleSuccess('');
     const res = await updateSchedule(schedule);
-    if (res.success) setScheduleSuccess('Horario semanal guardado correctamente.');
-    else setScheduleError(res.error ?? 'Error al guardar horario');
+    if (res.success) showToast('Horario semanal guardado correctamente', 'success');
+    else showToast(res.error ?? 'Error al guardar horario', 'error');
   };
 
   const handleCopySchedule = () => {
@@ -438,16 +418,14 @@ export function AdminDashboard({ psychologist, onLogout }: Props) {
 
   const handleCreateRecurring = async (e: React.FormEvent) => {
     e.preventDefault();
-    setRecurringFormError('');
-    setRecurringFormSuccess('');
     const res = await createRecurring({ ...recurringForm, frequency_weeks: Number(recurringForm.frequency_weeks) });
     if (res.success && res.data) {
-      setRecurringFormSuccess(`Recurrencia creada. ${res.data.slots_created} turno(s) generado(s).`);
+      showToast(`Recurrencia creada. ${res.data.slots_created} turno(s) generado(s).`, 'success');
       setRecurringForm({ patient_name: '', patient_email: '', patient_phone: '', start_date: '', time: '', frequency_weeks: 1 });
       loadRecurring();
       loadSlots(agendaView === 'mes' ? monthDatesStr.split(',') : weekDateStrs);
     } else {
-      setRecurringFormError(res.error ?? 'Error al crear la recurrencia');
+      showToast(res.error ?? 'Error al crear la recurrencia', 'error');
     }
   };
 
@@ -455,9 +433,10 @@ export function AdminDashboard({ psychologist, onLogout }: Props) {
     const res = await cancelRecurring(id);
     if (res.success) {
       setRecurrings(prev => prev.filter(r => r.id !== id));
+      showToast('Recurrencia cancelada', 'success');
       loadSlots(agendaView === 'mes' ? monthDatesStr.split(',') : weekDateStrs);
     } else {
-      setRecurringFormError(res.error ?? 'Error al cancelar la recurrencia');
+      showToast(res.error ?? 'Error al cancelar la recurrencia', 'error');
     }
   };
 
@@ -571,11 +550,6 @@ export function AdminDashboard({ psychologist, onLogout }: Props) {
       </div>
 
       <main className="max-w-6xl mx-auto px-4 py-5 pb-24 sm:pb-6">
-        {actionError && (
-          <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-xl text-sm text-red-600">
-            {actionError}
-          </div>
-        )}
 
         {/* Tab content header */}
         <div className="flex items-center gap-3 mb-5">
@@ -1190,16 +1164,6 @@ export function AdminDashboard({ psychologist, onLogout }: Props) {
                     <option value={4}>Cada 4 semanas</option>
                   </select>
                 </div>
-                {recurringFormError && (
-                  <p className="text-sm text-red-600 bg-red-50 border border-red-200 rounded-xl px-4 py-3">
-                    {recurringFormError}
-                  </p>
-                )}
-                {recurringFormSuccess && (
-                  <p className="text-sm text-[#1e6e44] bg-[#4caf7d]/10 border border-[#4caf7d]/20 rounded-xl px-4 py-3">
-                    {recurringFormSuccess}
-                  </p>
-                )}
                 <button
                   type="submit"
                   className="w-full bg-[#1a2e4a] text-white rounded-xl py-3 text-sm font-semibold hover:bg-[#243d61] transition-colors"
@@ -1278,8 +1242,6 @@ export function AdminDashboard({ psychologist, onLogout }: Props) {
                   </select>
                   <p className="mt-1.5 text-xs text-slate-400">Se usará al crear nuevos turnos y recurrencias.</p>
                 </div>
-                {settingsError && <p className="text-sm text-red-600 bg-red-50 border border-red-200 rounded-xl px-4 py-3">{settingsError}</p>}
-                {settingsSuccess && <p className="text-sm text-[#1e6e44] bg-[#4caf7d]/10 border border-[#4caf7d]/20 rounded-xl px-4 py-3">{settingsSuccess}</p>}
                 <button type="submit" className="w-full bg-[#1a2e4a] text-white rounded-xl py-3 text-sm font-semibold hover:bg-[#243d61] transition-colors">
                   Guardar
                 </button>
@@ -1354,8 +1316,6 @@ export function AdminDashboard({ psychologist, onLogout }: Props) {
                   />
                   <p className="mt-1.5 text-xs text-slate-400">Se usará para redirigir pacientes cuando no puedan autogestionar.</p>
                 </div>
-                {policiesError && <p className="text-sm text-red-600 bg-red-50 border border-red-200 rounded-xl px-4 py-3">{policiesError}</p>}
-                {policiesSuccess && <p className="text-sm text-[#1e6e44] bg-[#4caf7d]/10 border border-[#4caf7d]/20 rounded-xl px-4 py-3">{policiesSuccess}</p>}
                 <button type="submit" className="w-full bg-[#1a2e4a] text-white rounded-xl py-3 text-sm font-semibold hover:bg-[#243d61] transition-colors">
                   Guardar políticas
                 </button>
@@ -1408,8 +1368,6 @@ export function AdminDashboard({ psychologist, onLogout }: Props) {
                     </div>
                   );
                 })}
-                {scheduleError && <p className="text-sm text-red-600 bg-red-50 border border-red-200 rounded-xl px-4 py-3 max-w-lg">{scheduleError}</p>}
-                {scheduleSuccess && <p className="text-sm text-[#1e6e44] bg-[#4caf7d]/10 border border-[#4caf7d]/20 rounded-xl px-4 py-3 max-w-lg">{scheduleSuccess}</p>}
                 <div className="max-w-lg">
                   <button type="submit" className="w-full bg-[#1a2e4a] text-white rounded-xl py-3 text-sm font-semibold hover:bg-[#243d61] transition-colors">
                     Guardar horario
@@ -1518,7 +1476,6 @@ export function AdminDashboard({ psychologist, onLogout }: Props) {
                   onChange={e => setAssignForm(f => ({ ...f, patient_phone: e.target.value }))}
                   className="w-full border border-slate-200 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-[#1a2e4a]/20"
                 />
-                {assignFormError && <p className="text-xs text-red-600">{assignFormError}</p>}
                 <button
                   type="submit"
                   className="w-full bg-[#1a2e4a] text-white rounded-xl py-3 text-sm font-semibold hover:bg-[#243d61] transition-colors"
@@ -1551,8 +1508,7 @@ export function AdminDashboard({ psychologist, onLogout }: Props) {
             loadSlots(agendaView === 'mes' ? monthDatesStr.split(',') : weekDateStrs);
             loadBookings();
             setDashboardKey(k => k + 1);
-            setActionSuccess('Sesión actualizada correctamente.');
-            setTimeout(() => setActionSuccess(''), 3000);
+            showToast('Sesión actualizada correctamente.', 'success');
           }}
           onManageRecurring={() => {
             const r = recurrings.find(rec => rec.id === managingSlot.recurring_booking_id);
@@ -1580,8 +1536,7 @@ export function AdminDashboard({ psychologist, onLogout }: Props) {
             loadSlots(agendaView === 'mes' ? monthDatesStr.split(',') : weekDateStrs);
             loadBookings();
             setDashboardKey(k => k + 1);
-            setActionSuccess('Recurrencia actualizada correctamente.');
-            setTimeout(() => setActionSuccess(''), 3000);
+            showToast('Recurrencia actualizada correctamente.', 'success');
           }}
         />
       )}
@@ -1595,17 +1550,6 @@ export function AdminDashboard({ psychologist, onLogout }: Props) {
         />
       )}
 
-      {/* Toast */}
-      {actionSuccess && (
-        <div className="fixed bottom-20 sm:bottom-6 right-4 bg-[#1a2e4a] text-white px-5 py-3 rounded-2xl shadow-xl font-medium flex items-center gap-3 z-50">
-          <div className="w-6 h-6 rounded-full bg-[#4caf7d] flex items-center justify-center">
-            <svg className="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
-            </svg>
-          </div>
-          {actionSuccess}
-        </div>
-      )}
 
       {/* Delete Confirmation */}
       <BottomSheet

@@ -34,6 +34,8 @@ function AdminRoute() {
   return <AdminDashboard psychologist={psychologist} onLogout={handleLogout} />;
 }
 
+import { NotificationProvider } from './lib/NotificationContext';
+
 export default function App() {
   // Reload if session data is cleared in another tab
   useEffect(() => {
@@ -47,12 +49,14 @@ export default function App() {
   }, []);
 
   return (
-    <BrowserRouter future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
-      <Routes>
-        <Route path="/" element={<PatientView />} />
-        <Route path="/admin" element={<AdminRoute />} />
-        <Route path="*" element={<Navigate to="/" replace />} />
-      </Routes>
-    </BrowserRouter>
+    <NotificationProvider>
+      <BrowserRouter future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
+        <Routes>
+          <Route path="/" element={<PatientView />} />
+          <Route path="/admin" element={<AdminRoute />} />
+          <Route path="*" element={<Navigate to="/" replace />} />
+        </Routes>
+      </BrowserRouter>
+    </NotificationProvider>
   );
 }

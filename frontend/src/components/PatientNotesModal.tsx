@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { BottomSheet } from './BottomSheet';
 import { getNotes, createNote, updateNote, deleteNote } from '../lib/api';
 import type { PatientNote } from '../lib/types';
+import { useNotifications } from '../lib/NotificationContext';
 
 interface Props {
   isOpen: boolean;
@@ -11,12 +12,12 @@ interface Props {
 }
 
 export function PatientNotesModal({ isOpen, onClose, patientEmail, patientName }: Props) {
+  const { showToast, confirm } = useNotifications();
   const [notes, setNotes] = useState<PatientNote[]>([]);
   const [loading, setLoading] = useState(false);
   const [newNote, setNewNote] = useState('');
   const [editingId, setEditingId] = useState<number | null>(null);
   const [editContent, setEditContent] = useState('');
-  const [error, setError] = useState('');
 
   const loadNotes = async () => {
     setLoading(true);
@@ -25,14 +26,13 @@ export function PatientNotesModal({ isOpen, onClose, patientEmail, patientName }
     if (res.success && res.data) {
       setNotes(res.data);
     } else {
-      setError('Error al cargar notas');
+      showToast('Error al cargar notas', 'error');
     }
   };
 
   useEffect(() => {
     if (isOpen && patientEmail) {
       loadNotes();
-      setError('');
       setNewNote('');
       setEditingId(null);
     }
@@ -46,9 +46,10 @@ export function PatientNotesModal({ isOpen, onClose, patientEmail, patientName }
     setLoading(false);
     if (res.success) {
       setNewNote('');
+      showToast('Nota guardada correctamente', 'success');
       loadNotes();
     } else {
-      setError(res.error ?? 'Error al guardar nota');
+      showToast(res.error ?? 'Error al guardar nota', 'error');
     }
   };
 
@@ -59,21 +60,30 @@ export function PatientNotesModal({ isOpen, onClose, patientEmail, patientName }
     setLoading(false);
     if (res.success) {
       setEditingId(null);
+      showToast('Nota actualizada', 'success');
       loadNotes();
     } else {
-      setError(res.error ?? 'Error al actualizar nota');
+      showToast(res.error ?? 'Error al actualizar nota', 'error');
     }
   };
 
   const handleDeleteNote = async (id: number) => {
-    if (!confirm('¿Estás seguro de eliminar esta nota?')) return;
+    const ok = await confirm({
+      title: '¿Eliminar nota?',
+      message: 'Esta acción no se puede deshacer.',
+      confirmText: 'Eliminar',
+      type: 'danger'
+    });
+    if (!ok) return;
+
     setLoading(true);
     const res = await deleteNote(id);
     setLoading(false);
     if (res.success) {
+      showToast('Nota eliminada', 'success');
       loadNotes();
     } else {
-      setError(res.error ?? 'Error al eliminar nota');
+      showToast(res.error ?? 'Error al eliminar nota', 'error');
     }
   };
 
@@ -96,8 +106,6 @@ export function PatientNotesModal({ isOpen, onClose, patientEmail, patientName }
             {loading && !editingId ? 'Guardando...' : 'Guardar Nota'}
           </button>
         </form>
-
-        {error && <p className="text-sm text-red-500 font-medium">{error}</p>}
 
         {/* Notes List */}
         <div className="space-y-4">

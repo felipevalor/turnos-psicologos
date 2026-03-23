@@ -2,20 +2,20 @@ import { useState } from 'react';
 import { Logo } from '../components/Logo';
 import { login } from '../lib/api';
 import type { Psychologist } from '../lib/types';
+import { useNotifications } from '../lib/NotificationContext';
 
 interface Props {
   onLogin: (psychologist: Psychologist) => void;
 }
 
 export function Login({ onLogin }: Props) {
+  const { showToast } = useNotifications();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setError('');
     setLoading(true);
 
     const res = await login(email, password);
@@ -26,7 +26,7 @@ export function Login({ onLogin }: Props) {
       localStorage.setItem('psi_user', JSON.stringify(res.data.psychologist));
       onLogin(res.data.psychologist);
     } else {
-      setError(res.error ?? 'Error al iniciar sesión');
+      showToast(res.error ?? 'Error al iniciar sesión', 'error');
     }
   };
 
@@ -63,12 +63,6 @@ export function Login({ onLogin }: Props) {
               className="w-full border border-gray-300 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
             />
           </div>
-
-          {error && (
-            <div className="p-3 bg-red-50 border border-red-200 rounded-xl">
-              <p className="text-sm text-red-600">{error}</p>
-            </div>
-          )}
 
           <button
             type="submit"

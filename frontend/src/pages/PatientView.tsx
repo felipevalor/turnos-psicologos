@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
+import { useNotifications } from '../lib/NotificationContext';
 import { Logo } from '../components/Logo';
 import { SlotGrid } from '../components/SlotGrid';
 import { BookingModal } from '../components/BookingModal';
@@ -11,7 +12,7 @@ import {
 } from '../lib/api';
 import { buildSessionEvent } from '../lib/googleCalendar';
 import type { Slot, BookingResult, BookingWithSlot } from '../lib/types';
-
+import { getTodayDateString, addDaysToLocal } from '../lib/date';
 
 function formatDate(dateStr: string): string {
   if (!dateStr) return '';
@@ -28,8 +29,6 @@ function formatDateShort(dateStr: string): string {
     weekday: 'short', day: 'numeric', month: 'short',
   });
 }
-
-import { getTodayDateString, addDaysToLocal } from '../lib/date';
 
 export async function findFirstAvailableDate(
   dates: string[],
@@ -75,6 +74,7 @@ type OutsidePolicyModal = {
 type PsychologistContact = { nombre: string; whatsapp_number: string | null };
 
 export function PatientView() {
+  const { showToast } = useNotifications();
   // Booking section
   const [selectedDate, setSelectedDate] = useState(TODAY_DATE_STRING);
   const [initializing, setInitializing] = useState(true);
@@ -91,8 +91,6 @@ export function PatientView() {
   const [cancelPhone, setCancelPhone] = useState('');
   const [myBookings, setMyBookings] = useState<BookingWithSlot[] | null>(null);
   const [searchLoading, setSearchLoading] = useState(false);
-  const [searchError, setSearchError] = useState('');
-  const [cancelMsg, setCancelMsg] = useState('');
   const [cancelLoading, setCancelLoading] = useState(false);
 
   const [psychologistContact, setPsychologistContact] = useState<PsychologistContact | null>(null);
@@ -112,7 +110,6 @@ export function PatientView() {
   const [rescheduleSelectedSlot, setRescheduleSelectedSlot] = useState<Slot | null>(null);
   const [rescheduleSeriesTime, setRescheduleSeriesTime] = useState('');
   const [rescheduleSeriesFromDate, setRescheduleSeriesFromDate] = useState(TODAY_DATE_STRING);
-  const [rescheduleError, setRescheduleError] = useState('');
 
   const datePickerRef = useRef<HTMLInputElement>(null);
 
@@ -175,11 +172,8 @@ export function PatientView() {
 
   const handleSearchBookings = async (e: React.FormEvent) => {
     e.preventDefault();
-    setSearchError('');
-    setMyBookings(null);
-    setCancelMsg('');
     if (!cancelEmail && !cancelPhone) {
-      setSearchError('Ingresá tu email o teléfono');
+      showToast('Ingresá tu email o teléfono', 'error');
       return;
     }
     setSearchLoading(true);
@@ -187,13 +181,11 @@ export function PatientView() {
     setSearchLoading(false);
     if (res.success && res.data) {
       setMyBookings(res.data);
-      if (res.data.length === 0) setSearchError('No se encontraron sesiones activas con esos datos.');
+      if (res.data.length === 0) showToast('No se encontraron sesiones activas con esos datos.', 'info');
     } else {
-      setSearchError(res.error ?? 'Error al buscar sesiones');
+      showToast(res.error ?? 'Error al buscar sesiones', 'error');
     }
   };
-
-  // ── Cancel ──────────────────────────────────────────────────────────────────
 
   const openCancel = (booking: BookingWithSlot) => {
     if (booking.recurring_booking_id) {
@@ -207,7 +199,6 @@ export function PatientView() {
     if (!showCancelConfirm) return;
     const { bookingId, recurringId, isSeries, date } = showCancelConfirm;
     setCancelLoading(true);
-    setCancelMsg('');
 
     const emailArg = cancelEmail || undefined;
     const phoneArg = cancelPhone || undefined;
@@ -226,7 +217,7 @@ export function PatientView() {
 
     if (res.success) {
       setShowCancelConfirm({ ...showCancelConfirm, step: 'success' });
-      setCancelMsg('Tu sesión fue cancelada.');
+      showToast('Tu sesión fue cancelada.', 'success');
       if (isSeries && recurringId !== null) {
         setMyBookings(prev => prev ? prev.filter(b => b.recurring_booking_id !== recurringId) : []);
       } else {
@@ -235,11 +226,9 @@ export function PatientView() {
       loadSlots();
     } else {
       setShowCancelConfirm(null);
-      setCancelMsg(res.error ?? 'Error al cancelar');
+      showToast(res.error ?? 'Error al cancelar', 'error');
     }
   };
-
-  // ── Reschedule ──────────────────────────────────────────────────────────────
 
   const loadRescheduleSlots = async (date: string) => {
     setRescheduleLoadingSlots(true);
@@ -258,11 +247,10 @@ export function PatientView() {
 
   const handleStartReschedule = (booking: BookingWithSlot) => {
     setReschedulingBooking(booking);
-    setRescheduleError('');
-    setRescheduleDate(TODAY_DATE_STRING);
-    setRescheduleSelectedSlot(null);
     setRescheduleSeriesTime('');
     setRescheduleSeriesFromDate(booking.date);
+    setRescheduleDate(TODAY_DATE_STRING);
+    setRescheduleSelectedSlot(null);
     if (booking.recurring_booking_id) {
       setRescheduleStep('choice');
     } else {
@@ -275,7 +263,6 @@ export function PatientView() {
   const handleReschedule = async () => {
     if (!reschedulingBooking) return;
     setCancelLoading(true);
-    setRescheduleError('');
 
     const emailArg = cancelEmail || undefined;
     const phoneArg = cancelPhone || undefined;
@@ -307,21 +294,21 @@ export function PatientView() {
 
     if (res.success) {
       setRescheduleStep('success');
-      setCancelMsg(
+      showToast(
         rescheduleType === 'series'
           ? 'Tus sesiones fueron reprogramadas exitosamente'
           : 'Tu sesión fue cambiada exitosamente',
+        'success'
       );
       handleSearchBookings({ preventDefault: () => { } } as React.FormEvent);
       loadSlots();
     } else {
-      setRescheduleError(res.error ?? 'Error al reprogramar');
+      showToast(res.error ?? 'Error al reprogramar', 'error');
     }
   };
 
   return (
     <div className="min-h-screen bg-slate-50">
-      {/* Sticky header + week strip */}
       <header className="bg-[#1a2e4a] text-white sticky top-0 z-30 shadow-lg">
         <div className="max-w-2xl mx-auto px-4 pt-4 pb-2 flex items-center justify-between">
           <div className="flex items-center">
@@ -371,7 +358,6 @@ export function PatientView() {
           </div>
         )}
 
-        {/* Booking success banner */}
         {bookingSuccess && (
           <div className="bg-[#4caf7d]/10 border border-[#4caf7d]/30 rounded-2xl p-4">
             <div className="flex items-start justify-between gap-3">
@@ -400,7 +386,6 @@ export function PatientView() {
           </div>
         )}
 
-        {/* Slots section */}
         <section className="bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden">
           <div className="px-5 pt-5 pb-3 border-b border-slate-50">
             <div className="flex items-baseline justify-between gap-2">
@@ -420,7 +405,6 @@ export function PatientView() {
           </div>
         </section>
 
-        {/* Mis sesiones (collapsible) */}
         <section className="bg-white rounded-2xl border border-slate-100 shadow-sm">
           <button
             onClick={() => setShowMySessions(v => !v)}
@@ -464,14 +448,6 @@ export function PatientView() {
                 </button>
               </form>
 
-              {searchError && <p className="mt-3 text-sm text-red-500">{searchError}</p>}
-
-              {cancelMsg && (
-                <div className="mt-3 p-4 bg-[#4caf7d]/10 border border-[#4caf7d]/20 rounded-xl space-y-2">
-                  <p className="text-sm text-[#1e6e44]">{cancelMsg}</p>
-                </div>
-              )}
-
               {myBookings && myBookings.length > 0 && (
                 <div className="mt-4 space-y-3">
                   {myBookings.map((b) => (
@@ -510,12 +486,10 @@ export function PatientView() {
         </section>
       </main>
 
-      {/* Booking Modal */}
       {selectedSlot && (
         <BookingModal slot={selectedSlot} onClose={() => setSelectedSlot(null)} onSuccess={handleBookingSuccess} />
       )}
 
-      {/* Outside policy modal */}
       <BottomSheet
         isOpen={outsidePolicyModal !== null}
         onClose={() => setOutsidePolicyModal(null)}
@@ -550,7 +524,6 @@ export function PatientView() {
         )}
       </BottomSheet>
 
-      {/* Cancel Bottom Sheet */}
       <BottomSheet
         isOpen={showCancelConfirm !== null}
         onClose={() => setShowCancelConfirm(null)}
@@ -643,7 +616,6 @@ export function PatientView() {
         )}
       </BottomSheet>
 
-      {/* Reschedule Bottom Sheet */}
       <BottomSheet
         isOpen={reschedulingBooking !== null}
         onClose={() => setReschedulingBooking(null)}
@@ -651,7 +623,6 @@ export function PatientView() {
       >
         {reschedulingBooking && (
           <div>
-            {/* Current session summary */}
             {rescheduleStep !== 'success' && (
               <div className="mb-5 p-4 bg-[#1a2e4a]/5 rounded-xl border border-[#1a2e4a]/10">
                 <p className="text-[10px] text-[#1a2e4a]/50 font-bold uppercase mb-1">Sesión actual</p>
@@ -660,7 +631,6 @@ export function PatientView() {
               </div>
             )}
 
-            {/* Step: choice (recurring only) */}
             {rescheduleStep === 'choice' && (
               <div className="space-y-3">
                 <p className="text-sm text-slate-600 mb-4">¿Qué querés cambiar?</p>
@@ -681,7 +651,6 @@ export function PatientView() {
               </div>
             )}
 
-            {/* Step: slots (single reschedule) */}
             {rescheduleStep === 'slots' && (
               <div className="space-y-4">
                 <label className="block text-sm font-bold text-[#1a2e4a]">Elegí la nueva fecha</label>
@@ -697,7 +666,6 @@ export function PatientView() {
                   loading={rescheduleLoadingSlots}
                   onSelect={(s) => { setRescheduleSelectedSlot(s); setRescheduleStep('confirm'); }}
                 />
-                {rescheduleError && <p className="text-sm text-red-500 font-medium">{rescheduleError}</p>}
                 {reschedulingBooking.recurring_booking_id && (
                   <button
                     onClick={() => setRescheduleStep('choice')}
@@ -709,7 +677,6 @@ export function PatientView() {
               </div>
             )}
 
-            {/* Step: series-time (series reschedule — date + time picker) */}
             {rescheduleStep === 'series-time' && (
               <div className="space-y-4">
                 <div>
@@ -740,7 +707,7 @@ export function PatientView() {
                   <button
                     onClick={() => { if (rescheduleSeriesTime) setRescheduleStep('confirm'); }}
                     disabled={!rescheduleSeriesTime}
-                    className="w-full bg-[#1a2e4a] text-white py-3.5 rounded-xl font-bold hover:bg-[#243d61] disabled:opacity-50 transition-colors"
+                    className="w-full bg-[#1a2e4a] text-white py-3.5 rounded-xl font-bold hover:bg-[#243d61] disabled:opacity-50 transition-all"
                   >
                     Continuar
                   </button>
@@ -751,11 +718,9 @@ export function PatientView() {
                     Volver
                   </button>
                 </div>
-                {rescheduleError && <p className="text-sm text-red-500 font-medium">{rescheduleError}</p>}
               </div>
             )}
 
-            {/* Step: confirm */}
             {rescheduleStep === 'confirm' && (rescheduleType === 'single' ? rescheduleSelectedSlot : rescheduleSeriesTime) && (
               <div className="space-y-5">
                 <div className="flex items-center justify-center gap-8 py-4">
@@ -783,22 +748,20 @@ export function PatientView() {
                   <button
                     onClick={handleReschedule}
                     disabled={cancelLoading}
-                    className="w-full bg-[#1a2e4a] text-white py-3.5 rounded-xl font-bold hover:bg-[#243d61] disabled:opacity-50 transition-colors"
+                    className="w-full bg-[#1a2e4a] text-white py-3.5 rounded-xl font-bold hover:bg-[#243d61] disabled:opacity-50 transition-all"
                   >
                     {cancelLoading ? 'Procesando...' : 'Confirmar cambio'}
                   </button>
                   <button
                     onClick={() => setRescheduleStep(rescheduleType === 'series' ? 'series-time' : 'slots')}
-                    className="w-full bg-slate-100 text-slate-700 py-3.5 rounded-xl font-bold hover:bg-slate-200 transition-colors text-sm"
+                    className="w-full bg-slate-100 text-slate-700 py-3.5 rounded-xl font-bold hover:bg-slate-200 transition-all text-sm"
                   >
                     Volver
                   </button>
                 </div>
-                {rescheduleError && <p className="text-sm text-red-500 font-medium mt-2">{rescheduleError}</p>}
               </div>
             )}
 
-            {/* Step: success */}
             {rescheduleStep === 'success' && (
               <div>
                 <p className="text-sm text-slate-600 mb-4 leading-relaxed">
@@ -835,7 +798,7 @@ export function PatientView() {
                   )}
                   <button
                     onClick={() => setReschedulingBooking(null)}
-                    className="w-full bg-slate-100 text-slate-700 py-3.5 rounded-xl font-bold hover:bg-slate-200 transition-colors text-sm"
+                    className="w-full bg-slate-100 text-slate-700 py-3.5 rounded-xl font-bold hover:bg-slate-200 transition-all text-sm"
                   >
                     Cerrar
                   </button>
