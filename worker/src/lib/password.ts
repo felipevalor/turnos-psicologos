@@ -49,9 +49,11 @@ export async function verifyPassword(password: string, stored: string): Promise<
     KEY_LENGTH_BITS,
   );
 
-  const computedHex = Array.from(new Uint8Array(hashBits))
-    .map((b) => b.toString(16).padStart(2, '0'))
-    .join('');
+  const computed = new Uint8Array(hashBits);
+  const expected = new Uint8Array(hashHex.match(/.{2}/g)!.map((b) => parseInt(b, 16)));
 
-  return computedHex === hashHex;
+  if (computed.length !== expected.length) return false;
+  let diff = 0;
+  for (let i = 0; i < computed.length; i++) diff |= computed[i] ^ expected[i];
+  return diff === 0;
 }

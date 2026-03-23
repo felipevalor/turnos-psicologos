@@ -3,6 +3,7 @@ import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { PatientView } from './pages/PatientView';
 import { Login } from './pages/Login';
 import { AdminDashboard } from './pages/AdminDashboard';
+import { apiLogout } from './lib/api';
 import type { Psychologist } from './lib/types';
 
 function AdminRoute() {
@@ -15,21 +16,17 @@ function AdminRoute() {
     }
   });
 
-  const [token, setToken] = useState<string | null>(() =>
-    localStorage.getItem('psi_token'),
-  );
-
-  const handleLogin = (newToken: string, psych: Psychologist) => {
-    setToken(newToken);
+  const handleLogin = (psych: Psychologist) => {
     setPsychologist(psych);
   };
 
-  const handleLogout = () => {
-    setToken(null);
+  const handleLogout = async () => {
+    await apiLogout();
+    localStorage.removeItem('psi_user');
     setPsychologist(null);
   };
 
-  if (!token || !psychologist) {
+  if (!psychologist) {
     return <Login onLogin={handleLogin} />;
   }
 
@@ -37,10 +34,10 @@ function AdminRoute() {
 }
 
 export default function App() {
-  // Sync token state if localStorage changes in another tab
+  // Reload if session data is cleared in another tab
   useEffect(() => {
     const handler = () => {
-      if (!localStorage.getItem('psi_token')) {
+      if (!localStorage.getItem('psi_user')) {
         window.location.reload();
       }
     };

@@ -51,6 +51,8 @@ export const bookingsRouter = new Hono<{ Bindings: Env; Variables: AppVariables 
 // GET /api/bookings  — admin
 bookingsRouter.get('/', authMiddleware, async (c) => {
   const psychologistId = c.get('psychologistId');
+  const limit = Math.min(Number(c.req.query('limit') ?? 100), 500);
+  const offset = Number(c.req.query('offset') ?? 0);
 
   const result = await c.env.DB.prepare(
     `SELECT b.id, b.paciente_nombre as patient_name, b.paciente_email as patient_email, b.paciente_telefono as patient_phone, b.created_at,
@@ -65,9 +67,10 @@ bookingsRouter.get('/', authMiddleware, async (c) => {
        AND rb.psychologist_id = s.psicologo_id
        AND rb.active = 1
      WHERE s.psicologo_id = ?
-     ORDER BY s.fecha, s.hora_inicio`,
+     ORDER BY s.fecha, s.hora_inicio
+     LIMIT ? OFFSET ?`,
   )
-    .bind(psychologistId)
+    .bind(psychologistId, limit, offset)
     .all();
 
   return c.json({ success: true, data: result.results });
@@ -91,6 +94,12 @@ bookingsRouter.post('/', async (c) => {
 
   if (!slot_id || !patient_name || !patient_email || !patient_phone) {
     return c.json({ success: false, error: 'Todos los campos son requeridos' }, 400);
+  }
+  if (patient_name.length > 100) {
+    return c.json({ success: false, error: 'Nombre demasiado largo (máximo 100 caracteres)' }, 400);
+  }
+  if (patient_email.length > 254 || !patient_email.includes('@')) {
+    return c.json({ success: false, error: 'Email inválido' }, 400);
   }
   if (!PHONE_RE.test(patient_phone)) {
     return c.json(
@@ -173,7 +182,6 @@ bookingsRouter.post('/', async (c) => {
     const thresholdHours = toHours(booking_min_hours, unit);
     const slotDatetime = new Date(`${slot.fecha}T${slot.hora_inicio}:00-03:00`);
     const diffHours = (slotDatetime.getTime() - Date.now()) / (1000 * 60 * 60);
-    console.log('[policy]', { slotDatetime, now: new Date(), diffHours, policy: booking_min_hours, unit, thresholdHours });
     if (thresholdHours > 0 && diffHours < thresholdHours) {
       return c.json({ success: true, data: bookingData, warning: 'outside_policy', policy_hours: booking_min_hours, psychologist_name: policy?.nombre ?? '' }, 201);
     }
@@ -192,7 +200,6 @@ bookingsRouter.post('/search', async (c) => {
   }
 
   const { email, phone } = body;
-  console.log('[search] body:', JSON.stringify(body));
   if (!email && !phone) {
     return c.json({ success: false, error: 'Ingresá tu email o teléfono' }, 400);
   }
@@ -307,7 +314,6 @@ bookingsRouter.patch('/:id', async (c) => {
     const reschUnit = reschPolicy?.policy_unit ?? 'hours';
     const reschThresholdHours = toHours(reschedule_min_hours, reschUnit);
     const reschHours = hoursUntilSlot(oldBooking.fecha, oldBooking.hora_inicio);
-    console.log('[policy]', { action: 'reschedule', reschHours, policy: reschedule_min_hours, unit: reschUnit, thresholdHours: reschThresholdHours });
     if (reschThresholdHours > 0 && reschHours < reschThresholdHours) {
       return c.json({
         success: false,
@@ -424,7 +430,6 @@ bookingsRouter.delete('/:id', async (c) => {
     const cancelUnit = policy?.policy_unit ?? 'hours';
     const cancelThresholdHours = toHours(cancel_min_hours, cancelUnit);
     const cancelHours = hoursUntilSlot(booking.fecha, booking.hora_inicio);
-    console.log('[policy]', { action: 'cancel', cancelHours, policy: cancel_min_hours, unit: cancelUnit, thresholdHours: cancelThresholdHours });
     if (cancelThresholdHours > 0 && cancelHours < cancelThresholdHours) {
       return c.json({
         success: false,

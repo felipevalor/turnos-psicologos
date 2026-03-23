@@ -4,8 +4,6 @@ import type { Env, AppVariables } from '../types';
 
 export const holidaysRouter = new Hono<{ Bindings: Env; Variables: AppVariables }>();
 
-// Simple in-memory cache for holidays
-// Key definition: YYYY -> array of holidays
 type PublicHoliday = {
     date: string;
     localName: string;
@@ -13,35 +11,49 @@ type PublicHoliday = {
     countryCode: string;
 };
 
-const holidaysCache = new Map<number, { timestamp: number; data: PublicHoliday[] }>();
+// In-memory fallback cache (per-isolate; KV used when available for cross-isolate persistence)
+const memoryCache = new Map<number, { timestamp: number; data: PublicHoliday[] }>();
 const CACHE_TTL_MS = 1000 * 60 * 60 * 24; // 24 hours
+const KV_CACHE_TTL_SECONDS = 86400;
 
-export async function fetchArgentineHolidays(year: number): Promise<PublicHoliday[]> {
-    const cached = holidaysCache.get(year);
-    if (cached && Date.now() - cached.timestamp < CACHE_TTL_MS) {
-        return cached.data;
+export async function fetchArgentineHolidays(year: number, kv?: KVNamespace): Promise<PublicHoliday[]> {
+    const kvKey = `holidays:AR:${year}`;
+
+    // 1. Try KV cache
+    if (kv) {
+        const cached = await kv.get(kvKey);
+        if (cached) return JSON.parse(cached) as PublicHoliday[];
     }
 
+    // 2. Try in-memory cache
+    const memCached = memoryCache.get(year);
+    if (memCached && Date.now() - memCached.timestamp < CACHE_TTL_MS) {
+        return memCached.data;
+    }
+
+    // 3. Fetch from external API
     try {
         const controller = new AbortController();
-        const timeoutId = setTimeout(() => controller.abort(), 3000); // 3 seconds timeout
+        const timeoutId = setTimeout(() => controller.abort(), 3000);
 
         const res = await fetch(`https://date.nager.at/api/v3/PublicHolidays/${year}/AR`, {
-            signal: controller.signal
+            signal: controller.signal,
         });
         clearTimeout(timeoutId);
 
-        if (!res.ok) {
-            throw new Error(`API error: ${res.status}`);
-        }
+        if (!res.ok) throw new Error(`API error: ${res.status}`);
 
         const data = (await res.json()) as PublicHoliday[];
-        holidaysCache.set(year, { timestamp: Date.now(), data });
+
+        if (kv) {
+            await kv.put(kvKey, JSON.stringify(data), { expirationTtl: KV_CACHE_TTL_SECONDS });
+        }
+        memoryCache.set(year, { timestamp: Date.now(), data });
+
         return data;
-    } catch (err) {
-        console.error(`Failed to fetch holidays for ${year}:`, err);
-        // Return empty array on failure (fail gracefully)
-        return [];
+    } catch {
+        // Return empty array on failure — slots will be generated for "holiday" dates
+        return memoryCache.get(year)?.data ?? [];
     }
 }
 
@@ -51,12 +63,12 @@ holidaysRouter.get('/', authMiddleware, async (c) => {
     const yearQuery = c.req.query('year');
     const year = yearQuery ? parseInt(yearQuery, 10) : new Date().getFullYear();
 
-    if (isNaN(year)) {
+    if (isNaN(year) || year < 2020 || year > 2100) {
         return c.json({ success: false, error: 'Año inválido' }, 400);
     }
 
     // 1. Fetch from external API
-    const externalHolidays = await fetchArgentineHolidays(year);
+    const externalHolidays = await fetchArgentineHolidays(year, c.env.CACHE);
 
     // 2. Fetch overrides from DB for this psychologist
     const overridesResult = await c.env.DB.prepare(

@@ -6,13 +6,26 @@ export const authMiddleware = createMiddleware<{
   Bindings: Env;
   Variables: AppVariables;
 }>(async (c, next) => {
-  const authorization = c.req.header('Authorization');
+  // Accept token from HttpOnly cookie (preferred) or Authorization header (fallback)
+  let token: string | null = null;
 
-  if (!authorization?.startsWith('Bearer ')) {
+  const cookieHeader = c.req.header('Cookie');
+  if (cookieHeader) {
+    const match = cookieHeader.match(/(?:^|;\s*)psi_session=([^;]+)/);
+    if (match) token = match[1];
+  }
+
+  if (!token) {
+    const authorization = c.req.header('Authorization');
+    if (authorization?.startsWith('Bearer ')) {
+      token = authorization.slice(7);
+    }
+  }
+
+  if (!token) {
     return c.json({ success: false, error: 'No autorizado' }, 401);
   }
 
-  const token = authorization.slice(7);
   const payload = await verifyJWT(token, c.env.JWT_SECRET);
 
   if (!payload) {

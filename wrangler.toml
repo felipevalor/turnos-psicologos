@@ -1,11 +1,19 @@
 name = "turnospsi-worker"
 main = "worker/src/index.ts"
 compatibility_date = "2024-01-01"
+account_id = "54b88e512f68875b3707aa3a5bf57197"
 
 [[d1_databases]]
 binding = "DB"
 database_name = "turnos-psicologos"
-database_id = "32e360b3-ef70-4858-a0b6-a31983298932"
+database_id = "6580824b-2b98-464b-8da3-893abbd61026"
+
+[[kv_namespaces]]
+# Run `wrangler kv:namespace create CACHE` to get a real ID
+# Without this namespace the app still works; rate limiting uses in-memory fallback
+# and holiday caching uses the in-memory Map fallback
+binding = "CACHE"
+id = "dabdeb7f16764c45988ef341e77fd37c"
 
 [vars]
 JWT_SECRET = "dev-secret-change-in-production"

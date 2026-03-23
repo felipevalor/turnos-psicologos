@@ -2,6 +2,7 @@ import { Hono } from 'hono';
 import { authMiddleware } from '../middleware/auth';
 import type { Env, AppVariables } from '../types';
 import { fetchArgentineHolidays } from './holidays';
+import { getTodayDateString, addMinutes, isValidDate, isValidTime } from '../lib/date';
 
 type SlotRow = {
   id: number;
@@ -15,18 +16,6 @@ type SlotRow = {
 type OverlapRow = { count: number };
 type ConfigRow = { session_duration_minutes: number };
 
-function addMinutes(time: string, minutes: number): string {
-  const [h, m] = time.split(':').map(Number);
-  const total = h * 60 + m + minutes;
-  return `${String(Math.floor(total / 60) % 24).padStart(2, '0')}:${String(total % 60).padStart(2, '0')}`;
-}
-
-import { getTodayDateString } from '../lib/date';
-
-function todayUTC(): string {
-  return getTodayDateString();
-}
-
 function dateFromUTC(dateStr: string): Date {
   return new Date(`${dateStr}T12:00:00Z`);
 }
@@ -35,17 +24,9 @@ function formatUTC(date: Date): string {
   return date.toISOString().split('T')[0];
 }
 
-function isValidDate(dateStr: string): boolean {
-  return /^\d{4}-\d{2}-\d{2}$/.test(dateStr) && !isNaN(new Date(dateStr).getTime());
-}
-
-function isValidTime(timeStr: string): boolean {
-  return /^\d{2}:\d{2}$/.test(timeStr);
-}
-
-export async function generateSlotsForDate(db: D1Database, date: string, psychologistId: number) {
+export async function generateSlotsForDate(db: D1Database, date: string, psychologistId: number, kv?: KVNamespace) {
   const year = parseInt(date.substring(0, 4), 10);
-  const externalHolidays = await fetchArgentineHolidays(year);
+  const externalHolidays = await fetchArgentineHolidays(year, kv);
   const isHoliday = externalHolidays.some(h => h.date === date);
 
   let generate = true;
@@ -54,7 +35,7 @@ export async function generateSlotsForDate(db: D1Database, date: string, psychol
       'SELECT id FROM holiday_overrides WHERE psychologist_id = ? AND date = ?'
     ).bind(psychologistId, date).first();
     if (!override) {
-      generate = false; // it is a holiday without override, do not generate
+      generate = false;
     }
   }
 
@@ -68,12 +49,12 @@ export async function generateSlotsForDate(db: D1Database, date: string, psychol
     ).bind(psychologistId, dayOfWeek).first<{ start_time: string, end_time: string, active: number }>();
 
     if (!scheduleWindow || scheduleWindow.active === 0) {
-      generate = false; // psychologist does not work this day
+      generate = false;
     }
   }
 
   if (!generate || !scheduleWindow) {
-    return; // Nothing to generate
+    return;
   }
 
   const psych = await db.prepare('SELECT session_duration_minutes FROM psicologos WHERE id = ?').bind(psychologistId).first<{ session_duration_minutes: number }>();
@@ -103,9 +84,8 @@ export async function generateSlotsForDate(db: D1Database, date: string, psychol
       await db.prepare(
         'INSERT INTO slots (psicologo_id, fecha, hora_inicio, hora_fin, disponible) VALUES (?, ?, ?, ?, 1)'
       ).bind(psychologistId, date, slot.start, slot.end).run();
-    } catch (e) {
+    } catch {
       // Ignore unique constraint failures for concurrent requests
-      console.error('Error inserting slot:', e);
     }
   }
 }
@@ -119,7 +99,6 @@ slotsRouter.get('/', async (c) => {
     return c.json({ success: false, error: 'Fecha inválida. Use formato YYYY-MM-DD' }, 400);
   }
 
-  // We assume there's one primary psychologist configuration
   const psych = await c.env.DB.prepare(
     'SELECT id, session_duration_minutes, booking_min_hours, policy_unit FROM psicologos LIMIT 1'
   ).first<{ id: number; session_duration_minutes: number; booking_min_hours: number; policy_unit: string }>();
@@ -128,13 +107,12 @@ slotsRouter.get('/', async (c) => {
   }
   const psychologistId = psych.id;
 
-  await generateSlotsForDate(c.env.DB, date, psychologistId);
+  await generateSlotsForDate(c.env.DB, date, psychologistId, c.env.CACHE);
 
   const existingSlotsResult = await c.env.DB.prepare(
     'SELECT id, fecha, hora_inicio, hora_fin, disponible FROM slots WHERE psicologo_id = ? AND fecha = ? ORDER BY hora_inicio'
   ).bind(psychologistId, date).all<SlotRow>();
 
-  // Compute booking cutoff in America/Buenos_Aires (UTC-3, no DST)
   const nowUtcMs = Date.now();
   const BA_OFFSET_MS = -3 * 60 * 60 * 1000;
   const nowBaMs = nowUtcMs + BA_OFFSET_MS;
@@ -150,17 +128,17 @@ slotsRouter.get('/', async (c) => {
     thresholdMinutes = policyMinHours * 60;
   }
 
-  // Cutoff = now_utc + threshold, then shift to BA wall clock for string comparison
   const cutoffUtcMs = nowUtcMs + thresholdMinutes * 60 * 1000;
   const cutoffBaDt = new Date(cutoffUtcMs + BA_OFFSET_MS);
   const cutoffDateStr = `${cutoffBaDt.getUTCFullYear()}-${String(cutoffBaDt.getUTCMonth() + 1).padStart(2, '0')}-${String(cutoffBaDt.getUTCDate()).padStart(2, '0')}`;
   const cutoffTimeStr = `${String(cutoffBaDt.getUTCHours()).padStart(2, '0')}:${String(cutoffBaDt.getUTCMinutes()).padStart(2, '0')}`;
 
+  // Suppress unused variable warning — nowBaMs is kept for potential future use in cutoff logic
+  void nowBaMs;
+
   const availableSlots = existingSlotsResult.results
     .filter(s => {
       if (Number(s.disponible) !== 1) return false;
-      // Only apply booking policy filter for today and the next few days
-      // A slot is blocked if its (date, start_time) falls within the cutoff window
       if (s.fecha < cutoffDateStr) return false;
       if (s.fecha === cutoffDateStr && s.hora_inicio <= cutoffTimeStr) return false;
       return true;
@@ -185,7 +163,7 @@ slotsRouter.get('/all', authMiddleware, async (c) => {
   const status = c.req.query('status');
 
   if (date && isValidDate(date)) {
-    await generateSlotsForDate(c.env.DB, date, psychologistId as number);
+    await generateSlotsForDate(c.env.DB, date, psychologistId as number, c.env.CACHE);
   }
 
   let query = `
@@ -245,7 +223,7 @@ slotsRouter.post('/', authMiddleware, async (c) => {
   if (!isValidTime(start_time)) {
     return c.json({ success: false, error: 'Formato de hora inválido (HH:MM)' }, 400);
   }
-  if (date < todayUTC()) {
+  if (date < getTodayDateString()) {
     return c.json({ success: false, error: 'No se puede crear un turno en una fecha pasada' }, 400);
   }
 
@@ -305,7 +283,7 @@ slotsRouter.post('/batch', authMiddleware, async (c) => {
   if (!isValidTime(start_time)) {
     return c.json({ success: false, error: 'Formato de hora inválido (HH:MM)' }, 400);
   }
-  if (start_date < todayUTC()) {
+  if (start_date < getTodayDateString()) {
     return c.json({ success: false, error: 'La fecha de inicio no puede ser pasada' }, 400);
   }
   if (end_date < start_date) {
@@ -421,7 +399,6 @@ slotsRouter.delete('/:id', authMiddleware, async (c) => {
     return c.json({ success: false, error: 'No se puede eliminar un turno con reserva activa' }, 409);
   }
 
-  // Instead of DELETE, we UPDATE disponible = -1 to mark it as deleted while keeping the row
   await c.env.DB.prepare('UPDATE slots SET disponible = -1 WHERE id = ?').bind(id).run();
 
   return c.json({ success: true });

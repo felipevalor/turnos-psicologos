@@ -11,20 +11,14 @@ import type { Env, AppVariables } from './types';
 
 const app = new Hono<{ Bindings: Env; Variables: AppVariables }>();
 
-app.use('*', async (c, next) => {
-  console.log(`[Request] ${c.req.method} ${c.req.url}`);
-  await next();
-});
-
-app.use(
-  '*',
-  cors({
-    origin: '*',
+app.use('*', (c, next) => {
+  return cors({
+    origin: c.env.ALLOWED_ORIGIN ?? '*',
     allowMethods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
     allowHeaders: ['Content-Type', 'Authorization'],
     maxAge: 86400,
-  }),
-);
+  })(c, next);
+});
 
 app.route('/api/auth', authRouter);
 app.route('/api/dashboard', dashboardRouter);

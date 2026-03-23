@@ -17,17 +17,17 @@ async function request<T>(
   path: string,
   options: RequestInit = {},
 ): Promise<ApiResponse<T>> {
-  const token = localStorage.getItem('psi_token');
   const headers: Record<string, string> = {
     'Content-Type': 'application/json',
     ...(options.headers as Record<string, string> | undefined),
   };
-  if (token) {
-    headers['Authorization'] = `Bearer ${token}`;
-  }
 
   try {
-    const res = await fetch(`${API_BASE}/api${path}`, { ...options, headers });
+    const res = await fetch(`${API_BASE}/api${path}`, {
+      ...options,
+      headers,
+      credentials: 'include', // send HttpOnly session cookie automatically
+    });
     return (await res.json()) as ApiResponse<T>;
   } catch {
     return { success: false, error: 'Error de conexión con el servidor' };
@@ -42,7 +42,7 @@ export const getContact = () =>
 // ── Auth ─────────────────────────────────────────────────────────────────────
 
 export const login = (email: string, password: string) =>
-  request<{ token: string; psychologist: import('./types').Psychologist }>(
+  request<{ psychologist: import('./types').Psychologist }>(
     '/auth/login',
     { method: 'POST', body: JSON.stringify({ email, password }) },
   );
