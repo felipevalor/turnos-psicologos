@@ -76,6 +76,8 @@ export function PatientView() {
   // Booking section
   const [selectedDate, setSelectedDate] = useState(TODAY_DATE_STRING);
   const [initializing, setInitializing] = useState(true);
+  const [availableDates, setAvailableDates] = useState<Set<string>>(new Set());
+  const [emptyDates, setEmptyDates] = useState<Set<string>>(new Set());
   const [slots, setSlots] = useState<Slot[]>([]);
   const [loadingSlots, setLoadingSlots] = useState(false);
   const [selectedSlot, setSelectedSlot] = useState<Slot | null>(null);
@@ -125,6 +127,13 @@ export function PatientView() {
         fetched = fetched.filter(s => s.start_time > currentTime);
       }
       setSlots(fetched);
+      if (fetched.length > 0) {
+        setAvailableDates(prev => new Set([...prev, selectedDate]));
+        setEmptyDates(prev => { const s = new Set(prev); s.delete(selectedDate); return s; });
+      } else {
+        setEmptyDates(prev => new Set([...prev, selectedDate]));
+        setAvailableDates(prev => { const s = new Set(prev); s.delete(selectedDate); return s; });
+      }
     }
   }, [selectedDate]);
 
@@ -135,7 +144,10 @@ export function PatientView() {
   }, [loadSlots, initializing]);
 
   useEffect(() => {
-    findFirstAvailableDate(STRIP_DATES, getSlots).then(date => {
+    findFirstAvailableDate(STRIP_DATES, getSlots, (date, hasSlots) => {
+      if (hasSlots) setAvailableDates(prev => new Set([...prev, date]));
+      else setEmptyDates(prev => new Set([...prev, date]));
+    }).then(date => {
       setSelectedDate(date);
       setInitializing(false);
     });
@@ -312,7 +324,7 @@ export function PatientView() {
         </div>
         <div className="max-w-2xl mx-auto px-4 pb-4 flex items-center gap-2">
           <div className="flex-1 min-w-0">
-            <WeekStrip dates={STRIP_DATES} selectedDate={selectedDate} onSelect={setSelectedDate} />
+            <WeekStrip dates={STRIP_DATES} selectedDate={selectedDate} onSelect={setSelectedDate} availableDates={availableDates} emptyDates={emptyDates} />
           </div>
           <div className="relative flex-none">
             <button
