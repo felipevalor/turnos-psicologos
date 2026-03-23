@@ -617,14 +617,9 @@ export function PatientView() {
                   Tu sesión fue cancelada.
                 </p>
                 <div className="flex flex-col gap-2">
-                  <AddToCalendarButton
-                    variant="cancel"
-                    event={buildSessionEvent(
-                      { date: showCancelConfirm.date, start_time: showCancelConfirm.startTime, end_time: showCancelConfirm.startTime },
-                      cancelEmail,
-                      psychologistContact?.nombre,
-                    )}
-                  />
+                  <p className="text-xs text-slate-400 bg-slate-50 border border-slate-100 rounded-xl p-3 text-center mb-1">
+                    Recordá borrar el evento de tu calendario manualente si lo habías agendado.
+                  </p>
                   {psychologistContact?.whatsapp_number && (
                     <a
                       href={`https://wa.me/${psychologistContact.whatsapp_number.replace(/\D/g, '')}?text=${encodeURIComponent(`Hola, cancelé mi sesión del ${formatDate(showCancelConfirm.date)} a las ${showCancelConfirm.startTime}.`)}`}
