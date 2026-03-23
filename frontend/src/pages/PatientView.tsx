@@ -157,10 +157,17 @@ export function PatientView() {
     getContact().then(res => { if (res.success && res.data) setPsychologistContact(res.data); });
   }, []);
 
+  useEffect(() => {
+    const saved = localStorage.getItem('psi_patient_email');
+    if (saved) setCancelEmail(saved);
+  }, []);
+
   const handleBookingSuccess = (result: BookingResult, warning?: string, policyHours?: number) => {
     setSelectedSlot(null);
     setBookingSuccess(result);
     setBookingWarning(warning === 'outside_policy' ? { policyHours: policyHours ?? 24 } : null);
+    localStorage.setItem('psi_patient_email', result.patient.email);
+    setCancelEmail(result.patient.email);
     loadSlots();
   };
 
