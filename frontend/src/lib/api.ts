@@ -22,6 +22,9 @@ async function request<T>(
     ...(options.headers as Record<string, string> | undefined),
   };
 
+  const token = localStorage.getItem('psi_token');
+  if (token) headers['Authorization'] = `Bearer ${token}`;
+
   try {
     const res = await fetch(`${API_BASE}/api${path}`, {
       ...options,
@@ -42,7 +45,7 @@ export const getContact = () =>
 // ── Auth ─────────────────────────────────────────────────────────────────────
 
 export const login = (email: string, password: string) =>
-  request<{ psychologist: import('./types').Psychologist }>(
+  request<{ token: string; psychologist: import('./types').Psychologist }>(
     '/auth/login',
     { method: 'POST', body: JSON.stringify({ email, password }) },
   );

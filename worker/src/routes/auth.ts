@@ -250,6 +250,7 @@ authRouter.post('/login', async (c) => {
   return c.json({
     success: true,
     data: {
+      token,
       psychologist: {
         id: psych.id,
         name: psych.name,

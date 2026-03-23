@@ -22,6 +22,7 @@ export function Login({ onLogin }: Props) {
     setLoading(false);
 
     if (res.success && res.data) {
+      if (res.data.token) localStorage.setItem('psi_token', res.data.token);
       localStorage.setItem('psi_user', JSON.stringify(res.data.psychologist));
       onLogin(res.data.psychologist);
     } else {

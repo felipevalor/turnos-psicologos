@@ -23,6 +23,7 @@ function AdminRoute() {
   const handleLogout = async () => {
     await apiLogout();
     localStorage.removeItem('psi_user');
+    localStorage.removeItem('psi_token');
     setPsychologist(null);
   };
 
