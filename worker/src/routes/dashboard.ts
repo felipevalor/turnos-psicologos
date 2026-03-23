@@ -19,15 +19,15 @@ dashboardRouter.get('/', authMiddleware, async (c) => {
 
   const [
     todaySessions,
-    
+
     // Week queries
-    weekTotal, weekBooked,
+    weekTotal, weekBooked, weekCancelled,
     prevWeekTotal, prevWeekBooked,
-    
+
     // Month queries
-    monthTotal, monthBooked,
-    prevMonthTotal, prevMonthBooked,
-    
+    monthTotal, monthBooked, monthCancelled,
+    prevMonthTotal, prevMonthBooked, prevMonthCancelled,
+
     // Patient queries
     activePatients,
     newPatientsThisMonth,
@@ -44,62 +44,84 @@ dashboardRouter.get('/', authMiddleware, async (c) => {
 
     // Current week total slots
     c.env.DB.prepare(`
-      SELECT COUNT(*) as cnt FROM slots 
+      SELECT COUNT(*) as cnt FROM slots
       WHERE psicologo_id = ? AND disponible >= 0
-      AND fecha >= date('now', '-3 hours', 'weekday 1', '-7 days') 
+      AND fecha >= date('now', '-3 hours', 'weekday 1', '-7 days')
       AND fecha <= date('now', '-3 hours', 'weekday 0')
     `).bind(psychologistId).first<CountRow>(),
 
     // Current week booked slots
     c.env.DB.prepare(`
-      SELECT COUNT(*) as cnt FROM slots 
+      SELECT COUNT(*) as cnt FROM slots
       WHERE psicologo_id = ? AND disponible = 0
-      AND fecha >= date('now', '-3 hours', 'weekday 1', '-7 days') 
+      AND fecha >= date('now', '-3 hours', 'weekday 1', '-7 days')
       AND fecha <= date('now', '-3 hours', 'weekday 0')
+    `).bind(psychologistId).first<CountRow>(),
+
+    // Current week cancellations
+    c.env.DB.prepare(`
+      SELECT COUNT(*) as cnt FROM cancellations
+      WHERE psicologo_id = ?
+      AND slot_fecha >= date('now', '-3 hours', 'weekday 1', '-7 days')
+      AND slot_fecha <= date('now', '-3 hours', 'weekday 0')
     `).bind(psychologistId).first<CountRow>(),
 
     // Previous week total slots
     c.env.DB.prepare(`
-      SELECT COUNT(*) as cnt FROM slots 
+      SELECT COUNT(*) as cnt FROM slots
       WHERE psicologo_id = ? AND disponible >= 0
-      AND fecha >= date('now', '-3 hours', 'weekday 1', '-14 days') 
+      AND fecha >= date('now', '-3 hours', 'weekday 1', '-14 days')
       AND fecha <= date('now', '-3 hours', 'weekday 0', '-7 days')
     `).bind(psychologistId).first<CountRow>(),
 
     // Previous week booked slots
     c.env.DB.prepare(`
-      SELECT COUNT(*) as cnt FROM slots 
+      SELECT COUNT(*) as cnt FROM slots
       WHERE psicologo_id = ? AND disponible = 0
-      AND fecha >= date('now', '-3 hours', 'weekday 1', '-14 days') 
+      AND fecha >= date('now', '-3 hours', 'weekday 1', '-14 days')
       AND fecha <= date('now', '-3 hours', 'weekday 0', '-7 days')
     `).bind(psychologistId).first<CountRow>(),
 
     // Current month total slots
     c.env.DB.prepare(`
-      SELECT COUNT(*) as cnt FROM slots 
+      SELECT COUNT(*) as cnt FROM slots
       WHERE psicologo_id = ? AND disponible >= 0
       AND strftime('%Y-%m', fecha) = strftime('%Y-%m', date('now', '-3 hours'))
     `).bind(psychologistId).first<CountRow>(),
 
     // Current month booked slots
     c.env.DB.prepare(`
-      SELECT COUNT(*) as cnt FROM slots 
+      SELECT COUNT(*) as cnt FROM slots
       WHERE psicologo_id = ? AND disponible = 0
       AND strftime('%Y-%m', fecha) = strftime('%Y-%m', date('now', '-3 hours'))
     `).bind(psychologistId).first<CountRow>(),
 
+    // Current month cancellations
+    c.env.DB.prepare(`
+      SELECT COUNT(*) as cnt FROM cancellations
+      WHERE psicologo_id = ?
+      AND strftime('%Y-%m', slot_fecha) = strftime('%Y-%m', date('now', '-3 hours'))
+    `).bind(psychologistId).first<CountRow>(),
+
     // Previous month total slots
     c.env.DB.prepare(`
-      SELECT COUNT(*) as cnt FROM slots 
+      SELECT COUNT(*) as cnt FROM slots
       WHERE psicologo_id = ? AND disponible >= 0
       AND strftime('%Y-%m', fecha) = strftime('%Y-%m', date('now', '-3 hours', '-1 month'))
     `).bind(psychologistId).first<CountRow>(),
 
     // Previous month booked slots
     c.env.DB.prepare(`
-      SELECT COUNT(*) as cnt FROM slots 
+      SELECT COUNT(*) as cnt FROM slots
       WHERE psicologo_id = ? AND disponible = 0
       AND strftime('%Y-%m', fecha) = strftime('%Y-%m', date('now', '-3 hours', '-1 month'))
+    `).bind(psychologistId).first<CountRow>(),
+
+    // Previous month cancellations
+    c.env.DB.prepare(`
+      SELECT COUNT(*) as cnt FROM cancellations
+      WHERE psicologo_id = ?
+      AND strftime('%Y-%m', slot_fecha) = strftime('%Y-%m', date('now', '-3 hours', '-1 month'))
     `).bind(psychologistId).first<CountRow>(),
 
     // Active patients (at least 1 future session)
@@ -123,12 +145,18 @@ dashboardRouter.get('/', authMiddleware, async (c) => {
 
   const wT = weekTotal?.cnt ?? 0;
   const wB = weekBooked?.cnt ?? 0;
+  const wC = weekCancelled?.cnt ?? 0;
   const pwT = prevWeekTotal?.cnt ?? 0;
   const pwB = prevWeekBooked?.cnt ?? 0;
   const mT = monthTotal?.cnt ?? 0;
   const mB = monthBooked?.cnt ?? 0;
+  const mC = monthCancelled?.cnt ?? 0;
   const pmT = prevMonthTotal?.cnt ?? 0;
   const pmB = prevMonthBooked?.cnt ?? 0;
+  const pmC = prevMonthCancelled?.cnt ?? 0;
+
+  // cancellation_rate = cancelled / (booked + cancelled) — excludes slots never reserved
+  const mCancellationRate = (mB + mC) > 0 ? Math.round((mC / (mB + mC)) * 100) : 0;
 
   return c.json({
     success: true,
@@ -141,7 +169,7 @@ dashboardRouter.get('/', authMiddleware, async (c) => {
         total_slots: wT,
         booked_slots: wB,
         occupancy_pct: wT > 0 ? Math.round((wB / wT) * 100) : 0,
-        cancelled: 0, // TODO: add cancellation tracking table
+        cancelled: wC,
         prev_total_slots: pwT,
         prev_booked_slots: pwB,
         prev_occupancy_pct: pwT > 0 ? Math.round((pwB / pwT) * 100) : 0,
@@ -151,12 +179,12 @@ dashboardRouter.get('/', authMiddleware, async (c) => {
         booked_slots: mB,
         occupancy_pct: mT > 0 ? Math.round((mB / mT) * 100) : 0,
         new_sessions: mB,
-        cancelled: 0, // TODO: add cancellation tracking table
-        cancellation_rate_pct: 0, // TODO: add cancellation tracking table
+        cancelled: mC,
+        cancellation_rate_pct: mCancellationRate,
         prev_total_slots: pmT,
         prev_booked_slots: pmB,
         prev_occupancy_pct: pmT > 0 ? Math.round((pmB / pmT) * 100) : 0,
-        prev_cancelled: 0, // TODO: add cancellation tracking table
+        prev_cancelled: pmC,
       },
       patients: {
         active: activePatients?.cnt ?? 0,

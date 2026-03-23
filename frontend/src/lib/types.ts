@@ -104,3 +104,10 @@ export interface DashboardData {
     new_this_month: number;
   };
 }
+
+export interface PatientNote {
+  id: number;
+  contenido: string;
+  created_at: string;
+  updated_at: string;
+}

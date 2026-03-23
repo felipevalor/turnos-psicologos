@@ -1,0 +1,447 @@
+[2026-03-22T15:33:55.429Z] [debug] [vite] connecting...
+[2026-03-22T15:33:55.575Z] [debug] [vite] connected.
+[2026-03-22T15:33:55.783Z] [info] %cDownload the React DevTools for a better development experience: https://reactjs.org/link/react-devtools font-weight:bold
+[2026-03-22T15:33:55.899Z] [error] Failed to load resource: the server responded with a status of 500 (Internal Server Error)
+[2026-03-22T15:33:55.900Z] [error] Failed to load resource: the server responded with a status of 500 (Internal Server Error)
+[2026-03-22T15:33:55.901Z] [error] Failed to load resource: the server responded with a status of 500 (Internal Server Error)
+[2026-03-22T15:33:55.901Z] [error] Failed to load resource: the server responded with a status of 500 (Internal Server Error)
+[2026-03-22T15:34:06.159Z] [error] Failed to load resource: the server responded with a status of 500 (Internal Server Error)
+[2026-03-22T15:34:15.291Z] [debug] [vite] connecting...
+[2026-03-22T15:34:15.293Z] [debug] [vite] connected.
+[2026-03-22T15:34:15.298Z] [info] %cDownload the React DevTools for a better development experience: https://reactjs.org/link/react-devtools font-weight:bold
+[2026-03-22T15:34:15.331Z] [error] Failed to load resource: the server responded with a status of 500 (Internal Server Error)
+[2026-03-22T15:34:15.331Z] [error] Failed to load resource: the server responded with a status of 500 (Internal Server Error)
+[2026-03-22T15:34:15.331Z] [error] Failed to load resource: the server responded with a status of 500 (Internal Server Error)
+[2026-03-22T15:34:15.331Z] [error] Failed to load resource: the server responded with a status of 500 (Internal Server Error)
+[2026-03-22T15:43:57.254Z] [debug] [vite] invalidate /src/pages/PatientView.tsx: Could not Fast Refresh (new export)
+[2026-03-22T15:43:57.254Z] [debug] [vite] hot updated: /src/pages/PatientView.tsx
+[2026-03-22T15:43:57.254Z] [debug] [vite] hot updated: /src/index.css
+[2026-03-22T15:43:57.267Z] [debug] [vite] hot updated: /src/App.tsx
+[2026-03-22T15:43:57.267Z] [debug] [vite] hot updated: /src/index.css
+[2026-03-22T15:43:57.291Z] [error] Failed to load resource: the server responded with a status of 500 (Internal Server Error)
+[2026-03-22T15:43:57.292Z] [error] Failed to load resource: the server responded with a status of 500 (Internal Server Error)
+[2026-03-22T15:44:00.783Z] [debug] [vite] invalidate /src/pages/PatientView.tsx: Could not Fast Refresh ("findFirstAvailableDate" export is incompatible). Learn more at https://github.com/vitejs/vite-plugin-react/tree/main/packages/plugin-react#consistent-components-exports
+[2026-03-22T15:44:00.783Z] [debug] [vite] hot updated: /src/pages/PatientView.tsx
+[2026-03-22T15:44:00.783Z] [debug] [vite] hot updated: /src/index.css
+[2026-03-22T15:44:00.794Z] [debug] [vite] hot updated: /src/App.tsx
+[2026-03-22T15:44:00.794Z] [debug] [vite] hot updated: /src/index.css
+[2026-03-22T15:44:00.817Z] [error] Failed to load resource: the server responded with a status of 500 (Internal Server Error)
+[2026-03-22T15:44:00.817Z] [error] Failed to load resource: the server responded with a status of 500 (Internal Server Error)
+[2026-03-22T15:44:00.818Z] [error] Failed to load resource: the server responded with a status of 500 (Internal Server Error)
+[2026-03-22T15:44:00.818Z] [error] Failed to load resource: the server responded with a status of 500 (Internal Server Error)
+[2026-03-22T15:44:05.651Z] [debug] [vite] invalidate /src/pages/PatientView.tsx: Could not Fast Refresh ("findFirstAvailableDate" export is incompatible). Learn more at https://github.com/vitejs/vite-plugin-react/tree/main/packages/plugin-react#consistent-components-exports
+[2026-03-22T15:44:05.651Z] [debug] [vite] hot updated: /src/pages/PatientView.tsx
+[2026-03-22T15:44:05.651Z] [debug] [vite] hot updated: /src/index.css
+[2026-03-22T15:44:05.659Z] [debug] [vite] hot updated: /src/App.tsx
+[2026-03-22T15:44:05.659Z] [debug] [vite] hot updated: /src/index.css
+[2026-03-22T15:44:05.683Z] [error] Failed to load resource: the server responded with a status of 500 (Internal Server Error)
+[2026-03-22T15:44:05.684Z] [error] Failed to load resource: the server responded with a status of 500 (Internal Server Error)
+[2026-03-22T15:44:05.686Z] [error] Failed to load resource: the server responded with a status of 500 (Internal Server Error)
+[2026-03-22T15:44:05.687Z] [error] Failed to load resource: the server responded with a status of 500 (Internal Server Error)
+[2026-03-22T15:44:05.687Z] [error] Failed to load resource: the server responded with a status of 500 (Internal Server Error)
+[2026-03-22T15:44:05.692Z] [error] Failed to load resource: the server responded with a status of 500 (Internal Server Error)
+[2026-03-22T15:44:05.692Z] [error] Failed to load resource: the server responded with a status of 500 (Internal Server Error)
+[2026-03-22T15:44:05.692Z] [error] Failed to load resource: the server responded with a status of 500 (Internal Server Error)
+[2026-03-22T15:44:05.693Z] [error] Failed to load resource: the server responded with a status of 500 (Internal Server Error)
+[2026-03-22T15:44:05.693Z] [error] Failed to load resource: the server responded with a status of 500 (Internal Server Error)
+[2026-03-22T15:44:05.693Z] [error] Failed to load resource: the server responded with a status of 500 (Internal Server Error)
+[2026-03-22T15:44:05.694Z] [error] Failed to load resource: the server responded with a status of 500 (Internal Server Error)
+[2026-03-22T15:44:05.694Z] [error] Failed to load resource: the server responded with a status of 500 (Internal Server Error)
+[2026-03-22T15:44:05.695Z] [error] Failed to load resource: the server responded with a status of 500 (Internal Server Error)
+[2026-03-22T15:44:05.695Z] [error] Failed to load resource: the server responded with a status of 500 (Internal Server Error)
+[2026-03-22T15:44:05.697Z] [error] Failed to load resource: the server responded with a status of 500 (Internal Server Error)
+[2026-03-22T15:44:05.697Z] [error] Failed to load resource: the server responded with a status of 500 (Internal Server Error)
+[2026-03-22T15:44:05.698Z] [error] Failed to load resource: the server responded with a status of 500 (Internal Server Error)
+[2026-03-22T15:44:05.698Z] [error] Failed to load resource: the server responded with a status of 500 (Internal Server Error)
+[2026-03-22T15:44:05.700Z] [error] Failed to load resource: the server responded with a status of 500 (Internal Server Error)
+[2026-03-22T15:44:05.700Z] [error] Failed to load resource: the server responded with a status of 500 (Internal Server Error)
+[2026-03-22T15:44:05.701Z] [error] Failed to load resource: the server responded with a status of 500 (Internal Server Error)
+[2026-03-22T15:44:05.702Z] [error] Failed to load resource: the server responded with a status of 500 (Internal Server Error)
+[2026-03-22T15:44:05.704Z] [error] Failed to load resource: the server responded with a status of 500 (Internal Server Error)
+[2026-03-22T15:44:05.704Z] [error] Failed to load resource: the server responded with a status of 500 (Internal Server Error)
+[2026-03-22T15:44:05.705Z] [error] Failed to load resource: the server responded with a status of 500 (Internal Server Error)
+[2026-03-22T15:44:05.705Z] [error] Failed to load resource: the server responded with a status of 500 (Internal Server Error)
+[2026-03-22T15:44:05.706Z] [error] Failed to load resource: the server responded with a status of 500 (Internal Server Error)
+[2026-03-22T15:44:05.709Z] [error] Failed to load resource: the server responded with a status of 500 (Internal Server Error)
+[2026-03-22T15:44:05.709Z] [error] Failed to load resource: the server responded with a status of 500 (Internal Server Error)
+[2026-03-22T15:44:05.711Z] [error] Failed to load resource: the server responded with a status of 500 (Internal Server Error)
+[2026-03-22T15:44:53.505Z] [debug] [vite] invalidate /src/pages/PatientView.tsx: Could not Fast Refresh ("findFirstAvailableDate" export is incompatible). Learn more at https://github.com/vitejs/vite-plugin-react/tree/main/packages/plugin-react#consistent-components-exports
+[2026-03-22T15:44:53.505Z] [debug] [vite] hot updated: /src/pages/PatientView.tsx
+[2026-03-22T15:44:53.505Z] [debug] [vite] hot updated: /src/index.css
+[2026-03-22T15:44:53.511Z] [debug] [vite] hot updated: /src/App.tsx
+[2026-03-22T15:44:53.511Z] [debug] [vite] hot updated: /src/index.css
+[2026-03-22T15:44:53.533Z] [error] Failed to load resource: the server responded with a status of 500 (Internal Server Error)
+[2026-03-22T15:44:53.534Z] [error] Failed to load resource: the server responded with a status of 500 (Internal Server Error)
+[2026-03-22T15:44:53.535Z] [error] Failed to load resource: the server responded with a status of 500 (Internal Server Error)
+[2026-03-22T15:44:53.536Z] [error] Failed to load resource: the server responded with a status of 500 (Internal Server Error)
+[2026-03-22T15:44:53.537Z] [error] Failed to load resource: the server responded with a status of 500 (Internal Server Error)
+[2026-03-22T15:44:53.539Z] [error] Failed to load resource: the server responded with a status of 500 (Internal Server Error)
+[2026-03-22T15:44:53.541Z] [error] Failed to load resource: the server responded with a status of 500 (Internal Server Error)
+[2026-03-22T15:44:53.542Z] [error] Failed to load resource: the server responded with a status of 500 (Internal Server Error)
+[2026-03-22T15:44:53.543Z] [error] Failed to load resource: the server responded with a status of 500 (Internal Server Error)
+[2026-03-22T15:44:53.545Z] [error] Failed to load resource: the server responded with a status of 500 (Internal Server Error)
+[2026-03-22T15:44:53.546Z] [error] Failed to load resource: the server responded with a status of 500 (Internal Server Error)
+[2026-03-22T15:44:53.548Z] [error] Failed to load resource: the server responded with a status of 500 (Internal Server Error)
+[2026-03-22T15:44:53.550Z] [error] Failed to load resource: the server responded with a status of 500 (Internal Server Error)
+[2026-03-22T15:44:53.551Z] [error] Failed to load resource: the server responded with a status of 500 (Internal Server Error)
+[2026-03-22T15:44:53.552Z] [error] Failed to load resource: the server responded with a status of 500 (Internal Server Error)
+[2026-03-22T15:44:53.554Z] [error] Failed to load resource: the server responded with a status of 500 (Internal Server Error)
+[2026-03-22T15:45:22.556Z] [debug] [vite] invalidate /src/pages/PatientView.tsx: Could not Fast Refresh ("findFirstAvailableDate" export is incompatible). Learn more at https://github.com/vitejs/vite-plugin-react/tree/main/packages/plugin-react#consistent-components-exports
+[2026-03-22T15:45:22.556Z] [debug] [vite] hot updated: /src/pages/PatientView.tsx
+[2026-03-22T15:45:22.556Z] [debug] [vite] hot updated: /src/index.css
+[2026-03-22T15:45:22.566Z] [debug] [vite] hot updated: /src/App.tsx
+[2026-03-22T15:45:22.566Z] [debug] [vite] hot updated: /src/index.css
+[2026-03-22T15:45:22.591Z] [error] Failed to load resource: the server responded with a status of 500 (Internal Server Error)
+[2026-03-22T15:45:22.592Z] [error] Failed to load resource: the server responded with a status of 500 (Internal Server Error)
+[2026-03-22T15:45:22.592Z] [error] Failed to load resource: the server responded with a status of 500 (Internal Server Error)
+[2026-03-22T15:45:22.594Z] [error] Failed to load resource: the server responded with a status of 500 (Internal Server Error)
+[2026-03-22T15:45:22.595Z] [error] Failed to load resource: the server responded with a status of 500 (Internal Server Error)
+[2026-03-22T15:45:22.597Z] [error] Failed to load resource: the server responded with a status of 500 (Internal Server Error)
+[2026-03-22T15:45:22.598Z] [error] Failed to load resource: the server responded with a status of 500 (Internal Server Error)
+[2026-03-22T15:45:22.599Z] [error] Failed to load resource: the server responded with a status of 500 (Internal Server Error)
+[2026-03-22T15:45:22.601Z] [error] Failed to load resource: the server responded with a status of 500 (Internal Server Error)
+[2026-03-22T15:45:22.602Z] [error] Failed to load resource: the server responded with a status of 500 (Internal Server Error)
+[2026-03-22T15:45:22.603Z] [error] Failed to load resource: the server responded with a status of 500 (Internal Server Error)
+[2026-03-22T15:45:22.605Z] [error] Failed to load resource: the server responded with a status of 500 (Internal Server Error)
+[2026-03-22T15:45:22.606Z] [error] Failed to load resource: the server responded with a status of 500 (Internal Server Error)
+[2026-03-22T15:45:22.607Z] [error] Failed to load resource: the server responded with a status of 500 (Internal Server Error)
+[2026-03-22T15:45:22.608Z] [error] Failed to load resource: the server responded with a status of 500 (Internal Server Error)
+[2026-03-22T15:45:22.611Z] [error] Failed to load resource: the server responded with a status of 500 (Internal Server Error)
+[2026-03-22T15:45:40.725Z] [debug] [vite] invalidate /src/pages/PatientView.tsx: Could not Fast Refresh ("findFirstAvailableDate" export is incompatible). Learn more at https://github.com/vitejs/vite-plugin-react/tree/main/packages/plugin-react#consistent-components-exports
+[2026-03-22T15:45:40.725Z] [debug] [vite] hot updated: /src/pages/PatientView.tsx
+[2026-03-22T15:45:40.725Z] [debug] [vite] hot updated: /src/index.css
+[2026-03-22T15:45:40.735Z] [debug] [vite] hot updated: /src/App.tsx
+[2026-03-22T15:45:40.735Z] [debug] [vite] hot updated: /src/index.css
+[2026-03-22T15:45:40.757Z] [error] Failed to load resource: the server responded with a status of 500 (Internal Server Error)
+[2026-03-22T15:45:40.758Z] [error] Failed to load resource: the server responded with a status of 500 (Internal Server Error)
+[2026-03-22T15:45:40.758Z] [error] Failed to load resource: the server responded with a status of 500 (Internal Server Error)
+[2026-03-22T15:45:40.760Z] [error] Failed to load resource: the server responded with a status of 500 (Internal Server Error)
+[2026-03-22T15:45:40.761Z] [error] Failed to load resource: the server responded with a status of 500 (Internal Server Error)
+[2026-03-22T15:45:40.763Z] [error] Failed to load resource: the server responded with a status of 500 (Internal Server Error)
+[2026-03-22T15:45:40.764Z] [error] Failed to load resource: the server responded with a status of 500 (Internal Server Error)
+[2026-03-22T15:45:40.765Z] [error] Failed to load resource: the server responded with a status of 500 (Internal Server Error)
+[2026-03-22T15:45:40.767Z] [error] Failed to load resource: the server responded with a status of 500 (Internal Server Error)
+[2026-03-22T15:45:40.768Z] [error] Failed to load resource: the server responded with a status of 500 (Internal Server Error)
+[2026-03-22T15:45:40.769Z] [error] Failed to load resource: the server responded with a status of 500 (Internal Server Error)
+[2026-03-22T15:45:40.770Z] [error] Failed to load resource: the server responded with a status of 500 (Internal Server Error)
+[2026-03-22T15:45:40.771Z] [error] Failed to load resource: the server responded with a status of 500 (Internal Server Error)
+[2026-03-22T15:45:40.772Z] [error] Failed to load resource: the server responded with a status of 500 (Internal Server Error)
+[2026-03-22T15:45:40.775Z] [error] Failed to load resource: the server responded with a status of 500 (Internal Server Error)
+[2026-03-22T15:45:40.775Z] [error] Failed to load resource: the server responded with a status of 500 (Internal Server Error)
+[2026-03-22T15:49:17.621Z] [debug] [vite] invalidate /src/pages/PatientView.tsx: Could not Fast Refresh ("findFirstAvailableDate" export is incompatible). Learn more at https://github.com/vitejs/vite-plugin-react/tree/main/packages/plugin-react#consistent-components-exports
+[2026-03-22T15:49:17.621Z] [debug] [vite] hot updated: /src/pages/PatientView.tsx
+[2026-03-22T15:49:17.621Z] [debug] [vite] hot updated: /src/index.css
+[2026-03-22T15:49:17.635Z] [debug] [vite] hot updated: /src/App.tsx
+[2026-03-22T15:49:17.635Z] [debug] [vite] hot updated: /src/index.css
+[2026-03-22T15:49:17.657Z] [error] Failed to load resource: the server responded with a status of 500 (Internal Server Error)
+[2026-03-22T15:49:17.658Z] [error] Failed to load resource: the server responded with a status of 500 (Internal Server Error)
+[2026-03-22T15:49:17.659Z] [error] Failed to load resource: the server responded with a status of 500 (Internal Server Error)
+[2026-03-22T15:49:22.968Z] [debug] [vite] invalidate /src/pages/PatientView.tsx: Could not Fast Refresh ("findFirstAvailableDate" export is incompatible). Learn more at https://github.com/vitejs/vite-plugin-react/tree/main/packages/plugin-react#consistent-components-exports
+[2026-03-22T15:49:22.968Z] [debug] [vite] hot updated: /src/pages/PatientView.tsx
+[2026-03-22T15:49:22.968Z] [debug] [vite] hot updated: /src/index.css
+[2026-03-22T15:49:22.981Z] [debug] [vite] hot updated: /src/App.tsx
+[2026-03-22T15:49:22.981Z] [debug] [vite] hot updated: /src/index.css
+[2026-03-22T15:49:23.003Z] [error] Failed to load resource: the server responded with a status of 500 (Internal Server Error)
+[2026-03-22T15:49:23.004Z] [error] Failed to load resource: the server responded with a status of 500 (Internal Server Error)
+[2026-03-22T15:49:23.005Z] [error] Failed to load resource: the server responded with a status of 500 (Internal Server Error)
+[2026-03-22T15:49:27.257Z] [debug] [vite] invalidate /src/pages/PatientView.tsx: Could not Fast Refresh ("findFirstAvailableDate" export is incompatible). Learn more at https://github.com/vitejs/vite-plugin-react/tree/main/packages/plugin-react#consistent-components-exports
+[2026-03-22T15:49:27.257Z] [debug] [vite] hot updated: /src/pages/PatientView.tsx
+[2026-03-22T15:49:27.257Z] [debug] [vite] hot updated: /src/index.css
+[2026-03-22T15:49:27.269Z] [debug] [vite] hot updated: /src/App.tsx
+[2026-03-22T15:49:27.269Z] [debug] [vite] hot updated: /src/index.css
+[2026-03-22T15:49:27.293Z] [error] The above error occurred in the <PatientView> component:
+
+    at PatientView (http://localhost:5173/src/pages/PatientView.tsx?t=1774194567197:72:43)
+    at RenderedRoute (http://localhost:5173/node_modules/.vite/deps/react-router-dom.js?v=c7de01e3:4129:5)
+    at Routes (http://localhost:5173/node_modules/.vite/deps/react-router-dom.js?v=c7de01e3:4599:5)
+    at Router (http://localhost:5173/node_modules/.vite/deps/react-router-dom.js?v=c7de01e3:4542:15)
+    at BrowserRouter (http://localhost:5173/node_modules/.vite/deps/react-router-dom.js?v=c7de01e3:5288:5)
+    at App (http://localhost:5173/src/App.tsx?t=1774194567197:61:3)
+
+Consider adding an error boundary to your tree to customize error handling behavior.
+Visit https://reactjs.org/link/error-boundaries to learn more about error boundaries.
+[2026-03-22T15:49:33.312Z] [debug] [vite] invalidate /src/pages/PatientView.tsx: Could not Fast Refresh ("findFirstAvailableDate" export is incompatible). Learn more at https://github.com/vitejs/vite-plugin-react/tree/main/packages/plugin-react#consistent-components-exports
+[2026-03-22T15:49:33.312Z] [debug] [vite] hot updated: /src/pages/PatientView.tsx
+[2026-03-22T15:49:33.313Z] [debug] [vite] hot updated: /src/index.css
+[2026-03-22T15:49:33.322Z] [debug] [vite] hot updated: /src/App.tsx
+[2026-03-22T15:49:33.322Z] [debug] [vite] hot updated: /src/index.css
+[2026-03-22T15:49:33.343Z] [error] The above error occurred in the <PatientView> component:
+
+    at PatientView (http://localhost:5173/src/pages/PatientView.tsx?t=1774194573255:72:43)
+    at RenderedRoute (http://localhost:5173/node_modules/.vite/deps/react-router-dom.js?v=c7de01e3:4129:5)
+    at Routes (http://localhost:5173/node_modules/.vite/deps/react-router-dom.js?v=c7de01e3:4599:5)
+    at Router (http://localhost:5173/node_modules/.vite/deps/react-router-dom.js?v=c7de01e3:4542:15)
+    at BrowserRouter (http://localhost:5173/node_modules/.vite/deps/react-router-dom.js?v=c7de01e3:5288:5)
+    at App (http://localhost:5173/src/App.tsx?t=1774194573255:61:3)
+
+Consider adding an error boundary to your tree to customize error handling behavior.
+Visit https://reactjs.org/link/error-boundaries to learn more about error boundaries.
+[2026-03-22T15:49:39.009Z] [debug] [vite] invalidate /src/pages/PatientView.tsx: Could not Fast Refresh ("findFirstAvailableDate" export is incompatible). Learn more at https://github.com/vitejs/vite-plugin-react/tree/main/packages/plugin-react#consistent-components-exports
+[2026-03-22T15:49:39.009Z] [debug] [vite] hot updated: /src/pages/PatientView.tsx
+[2026-03-22T15:49:39.009Z] [debug] [vite] hot updated: /src/index.css
+[2026-03-22T15:49:39.016Z] [debug] [vite] hot updated: /src/App.tsx
+[2026-03-22T15:49:39.016Z] [debug] [vite] hot updated: /src/index.css
+[2026-03-22T15:49:39.036Z] [error] The above error occurred in the <PatientView> component:
+
+    at PatientView (http://localhost:5173/src/pages/PatientView.tsx?t=1774194578955:72:43)
+    at RenderedRoute (http://localhost:5173/node_modules/.vite/deps/react-router-dom.js?v=c7de01e3:4129:5)
+    at Routes (http://localhost:5173/node_modules/.vite/deps/react-router-dom.js?v=c7de01e3:4599:5)
+    at Router (http://localhost:5173/node_modules/.vite/deps/react-router-dom.js?v=c7de01e3:4542:15)
+    at BrowserRouter (http://localhost:5173/node_modules/.vite/deps/react-router-dom.js?v=c7de01e3:5288:5)
+    at App (http://localhost:5173/src/App.tsx?t=1774194578955:61:3)
+
+Consider adding an error boundary to your tree to customize error handling behavior.
+Visit https://reactjs.org/link/error-boundaries to learn more about error boundaries.
+[2026-03-22T15:49:43.231Z] [debug] [vite] invalidate /src/pages/PatientView.tsx: Could not Fast Refresh ("findFirstAvailableDate" export is incompatible). Learn more at https://github.com/vitejs/vite-plugin-react/tree/main/packages/plugin-react#consistent-components-exports
+[2026-03-22T15:49:43.231Z] [debug] [vite] hot updated: /src/pages/PatientView.tsx
+[2026-03-22T15:49:43.231Z] [debug] [vite] hot updated: /src/index.css
+[2026-03-22T15:49:43.238Z] [debug] [vite] hot updated: /src/App.tsx
+[2026-03-22T15:49:43.238Z] [debug] [vite] hot updated: /src/index.css
+[2026-03-22T15:49:43.258Z] [error] The above error occurred in the <PatientView> component:
+
+    at PatientView (http://localhost:5173/src/pages/PatientView.tsx?t=1774194583168:72:43)
+    at RenderedRoute (http://localhost:5173/node_modules/.vite/deps/react-router-dom.js?v=c7de01e3:4129:5)
+    at Routes (http://localhost:5173/node_modules/.vite/deps/react-router-dom.js?v=c7de01e3:4599:5)
+    at Router (http://localhost:5173/node_modules/.vite/deps/react-router-dom.js?v=c7de01e3:4542:15)
+    at BrowserRouter (http://localhost:5173/node_modules/.vite/deps/react-router-dom.js?v=c7de01e3:5288:5)
+    at App (http://localhost:5173/src/App.tsx?t=1774194583168:61:3)
+
+Consider adding an error boundary to your tree to customize error handling behavior.
+Visit https://reactjs.org/link/error-boundaries to learn more about error boundaries.
+[2026-03-22T15:49:46.421Z] [debug] [vite] invalidate /src/pages/PatientView.tsx: Could not Fast Refresh ("findFirstAvailableDate" export is incompatible). Learn more at https://github.com/vitejs/vite-plugin-react/tree/main/packages/plugin-react#consistent-components-exports
+[2026-03-22T15:49:46.421Z] [debug] [vite] hot updated: /src/pages/PatientView.tsx
+[2026-03-22T15:49:46.421Z] [debug] [vite] hot updated: /src/index.css
+[2026-03-22T15:49:46.446Z] [debug] [vite] hot updated: /src/App.tsx
+[2026-03-22T15:49:46.446Z] [debug] [vite] hot updated: /src/index.css
+[2026-03-22T15:49:46.466Z] [error] The above error occurred in the <PatientView> component:
+
+    at PatientView (http://localhost:5173/src/pages/PatientView.tsx?t=1774194586358:72:43)
+    at RenderedRoute (http://localhost:5173/node_modules/.vite/deps/react-router-dom.js?v=c7de01e3:4129:5)
+    at Routes (http://localhost:5173/node_modules/.vite/deps/react-router-dom.js?v=c7de01e3:4599:5)
+    at Router (http://localhost:5173/node_modules/.vite/deps/react-router-dom.js?v=c7de01e3:4542:15)
+    at BrowserRouter (http://localhost:5173/node_modules/.vite/deps/react-router-dom.js?v=c7de01e3:5288:5)
+    at App (http://localhost:5173/src/App.tsx?t=1774194586358:61:3)
+
+Consider adding an error boundary to your tree to customize error handling behavior.
+Visit https://reactjs.org/link/error-boundaries to learn more about error boundaries.
+[2026-03-22T15:49:51.382Z] [debug] [vite] invalidate /src/pages/PatientView.tsx: Could not Fast Refresh ("findFirstAvailableDate" export is incompatible). Learn more at https://github.com/vitejs/vite-plugin-react/tree/main/packages/plugin-react#consistent-components-exports
+[2026-03-22T15:49:51.382Z] [debug] [vite] hot updated: /src/pages/PatientView.tsx
+[2026-03-22T15:49:51.382Z] [debug] [vite] hot updated: /src/index.css
+[2026-03-22T15:49:51.393Z] [debug] [vite] hot updated: /src/App.tsx
+[2026-03-22T15:49:51.393Z] [debug] [vite] hot updated: /src/index.css
+[2026-03-22T15:49:51.412Z] [error] The above error occurred in the <PatientView> component:
+
+    at PatientView (http://localhost:5173/src/pages/PatientView.tsx?t=1774194591315:72:43)
+    at RenderedRoute (http://localhost:5173/node_modules/.vite/deps/react-router-dom.js?v=c7de01e3:4129:5)
+    at Routes (http://localhost:5173/node_modules/.vite/deps/react-router-dom.js?v=c7de01e3:4599:5)
+    at Router (http://localhost:5173/node_modules/.vite/deps/react-router-dom.js?v=c7de01e3:4542:15)
+    at BrowserRouter (http://localhost:5173/node_modules/.vite/deps/react-router-dom.js?v=c7de01e3:5288:5)
+    at App (http://localhost:5173/src/App.tsx?t=1774194591315:61:3)
+
+Consider adding an error boundary to your tree to customize error handling behavior.
+Visit https://reactjs.org/link/error-boundaries to learn more about error boundaries.
+[2026-03-22T15:50:12.068Z] [debug] [vite] invalidate /src/pages/PatientView.tsx: Could not Fast Refresh ("findFirstAvailableDate" export is incompatible). Learn more at https://github.com/vitejs/vite-plugin-react/tree/main/packages/plugin-react#consistent-components-exports
+[2026-03-22T15:50:12.068Z] [debug] [vite] hot updated: /src/pages/PatientView.tsx
+[2026-03-22T15:50:12.068Z] [debug] [vite] hot updated: /src/index.css
+[2026-03-22T15:50:12.098Z] [debug] [vite] hot updated: /src/App.tsx
+[2026-03-22T15:50:12.098Z] [debug] [vite] hot updated: /src/index.css
+[2026-03-22T15:50:12.118Z] [error] The above error occurred in the <PatientView> component:
+
+    at PatientView (http://localhost:5173/src/pages/PatientView.tsx?t=1774194612006:72:43)
+    at RenderedRoute (http://localhost:5173/node_modules/.vite/deps/react-router-dom.js?v=c7de01e3:4129:5)
+    at Routes (http://localhost:5173/node_modules/.vite/deps/react-router-dom.js?v=c7de01e3:4599:5)
+    at Router (http://localhost:5173/node_modules/.vite/deps/react-router-dom.js?v=c7de01e3:4542:15)
+    at BrowserRouter (http://localhost:5173/node_modules/.vite/deps/react-router-dom.js?v=c7de01e3:5288:5)
+    at App (http://localhost:5173/src/App.tsx?t=1774194612006:61:3)
+
+Consider adding an error boundary to your tree to customize error handling behavior.
+Visit https://reactjs.org/link/error-boundaries to learn more about error boundaries.
+[2026-03-22T15:50:14.345Z] [debug] [vite] invalidate /src/pages/PatientView.tsx: Could not Fast Refresh ("findFirstAvailableDate" export is incompatible). Learn more at https://github.com/vitejs/vite-plugin-react/tree/main/packages/plugin-react#consistent-components-exports
+[2026-03-22T15:50:14.345Z] [debug] [vite] hot updated: /src/pages/PatientView.tsx
+[2026-03-22T15:50:14.345Z] [debug] [vite] hot updated: /src/index.css
+[2026-03-22T15:50:14.352Z] [debug] [vite] hot updated: /src/App.tsx
+[2026-03-22T15:50:14.352Z] [debug] [vite] hot updated: /src/index.css
+[2026-03-22T15:50:14.371Z] [error] The above error occurred in the <PatientView> component:
+
+    at PatientView (http://localhost:5173/src/pages/PatientView.tsx?t=1774194614290:72:43)
+    at RenderedRoute (http://localhost:5173/node_modules/.vite/deps/react-router-dom.js?v=c7de01e3:4129:5)
+    at Routes (http://localhost:5173/node_modules/.vite/deps/react-router-dom.js?v=c7de01e3:4599:5)
+    at Router (http://localhost:5173/node_modules/.vite/deps/react-router-dom.js?v=c7de01e3:4542:15)
+    at BrowserRouter (http://localhost:5173/node_modules/.vite/deps/react-router-dom.js?v=c7de01e3:5288:5)
+    at App (http://localhost:5173/src/App.tsx?t=1774194614290:61:3)
+
+Consider adding an error boundary to your tree to customize error handling behavior.
+Visit https://reactjs.org/link/error-boundaries to learn more about error boundaries.
+[2026-03-22T15:50:17.592Z] [debug] [vite] invalidate /src/pages/PatientView.tsx: Could not Fast Refresh ("findFirstAvailableDate" export is incompatible). Learn more at https://github.com/vitejs/vite-plugin-react/tree/main/packages/plugin-react#consistent-components-exports
+[2026-03-22T15:50:17.592Z] [debug] [vite] hot updated: /src/pages/PatientView.tsx
+[2026-03-22T15:50:17.592Z] [debug] [vite] hot updated: /src/index.css
+[2026-03-22T15:50:17.602Z] [debug] [vite] hot updated: /src/App.tsx
+[2026-03-22T15:50:17.602Z] [debug] [vite] hot updated: /src/index.css
+[2026-03-22T15:50:17.632Z] [error] Failed to load resource: the server responded with a status of 500 (Internal Server Error)
+[2026-03-22T15:50:17.632Z] [error] Failed to load resource: the server responded with a status of 500 (Internal Server Error)
+[2026-03-22T15:50:17.632Z] [error] Failed to load resource: the server responded with a status of 500 (Internal Server Error)
+[2026-03-22T15:50:17.632Z] [error] Failed to load resource: the server responded with a status of 500 (Internal Server Error)
+[2026-03-22T15:50:17.636Z] [error] Failed to load resource: the server responded with a status of 500 (Internal Server Error)
+[2026-03-22T15:50:17.638Z] [error] Failed to load resource: the server responded with a status of 500 (Internal Server Error)
+[2026-03-22T15:50:17.638Z] [error] Failed to load resource: the server responded with a status of 500 (Internal Server Error)
+[2026-03-22T15:50:17.639Z] [error] Failed to load resource: the server responded with a status of 500 (Internal Server Error)
+[2026-03-22T15:50:17.639Z] [error] Failed to load resource: the server responded with a status of 500 (Internal Server Error)
+[2026-03-22T15:50:17.642Z] [error] Failed to load resource: the server responded with a status of 500 (Internal Server Error)
+[2026-03-22T15:50:17.642Z] [error] Failed to load resource: the server responded with a status of 500 (Internal Server Error)
+[2026-03-22T15:50:17.643Z] [error] Failed to load resource: the server responded with a status of 500 (Internal Server Error)
+[2026-03-22T15:50:17.643Z] [error] Failed to load resource: the server responded with a status of 500 (Internal Server Error)
+[2026-03-22T15:50:17.644Z] [error] Failed to load resource: the server responded with a status of 500 (Internal Server Error)
+[2026-03-22T15:50:17.644Z] [error] Failed to load resource: the server responded with a status of 500 (Internal Server Error)
+[2026-03-22T15:50:17.645Z] [error] Failed to load resource: the server responded with a status of 500 (Internal Server Error)
+[2026-03-22T15:50:17.646Z] [error] Failed to load resource: the server responded with a status of 500 (Internal Server Error)
+[2026-03-22T15:50:17.647Z] [error] Failed to load resource: the server responded with a status of 500 (Internal Server Error)
+[2026-03-22T15:50:17.647Z] [error] Failed to load resource: the server responded with a status of 500 (Internal Server Error)
+[2026-03-22T15:50:17.648Z] [error] Failed to load resource: the server responded with a status of 500 (Internal Server Error)
+[2026-03-22T15:50:17.649Z] [error] Failed to load resource: the server responded with a status of 500 (Internal Server Error)
+[2026-03-22T15:50:17.650Z] [error] Failed to load resource: the server responded with a status of 500 (Internal Server Error)
+[2026-03-22T15:50:17.650Z] [error] Failed to load resource: the server responded with a status of 500 (Internal Server Error)
+[2026-03-22T15:50:17.651Z] [error] Failed to load resource: the server responded with a status of 500 (Internal Server Error)
+[2026-03-22T15:50:17.651Z] [error] Failed to load resource: the server responded with a status of 500 (Internal Server Error)
+[2026-03-22T15:50:17.653Z] [error] Failed to load resource: the server responded with a status of 500 (Internal Server Error)
+[2026-03-22T15:50:17.653Z] [error] Failed to load resource: the server responded with a status of 500 (Internal Server Error)
+[2026-03-22T15:50:17.654Z] [error] Failed to load resource: the server responded with a status of 500 (Internal Server Error)
+[2026-03-22T15:50:17.656Z] [error] Failed to load resource: the server responded with a status of 500 (Internal Server Error)
+[2026-03-22T15:50:17.658Z] [error] Failed to load resource: the server responded with a status of 500 (Internal Server Error)
+[2026-03-22T15:50:17.658Z] [error] Failed to load resource: the server responded with a status of 500 (Internal Server Error)
+[2026-03-22T15:50:28.039Z] [debug] [vite] connecting...
+[2026-03-22T15:50:28.071Z] [debug] [vite] connected.
+[2026-03-22T15:50:28.160Z] [info] %cDownload the React DevTools for a better development experience: https://reactjs.org/link/react-devtools font-weight:bold
+[2026-03-22T15:50:28.173Z] [error] Failed to load resource: the server responded with a status of 500 (Internal Server Error)
+[2026-03-22T15:50:28.173Z] [error] Failed to load resource: the server responded with a status of 500 (Internal Server Error)
+[2026-03-22T15:50:28.174Z] [error] Failed to load resource: the server responded with a status of 500 (Internal Server Error)
+[2026-03-22T15:50:28.174Z] [error] Failed to load resource: the server responded with a status of 500 (Internal Server Error)
+[2026-03-22T15:50:28.174Z] [error] Failed to load resource: the server responded with a status of 500 (Internal Server Error)
+[2026-03-22T15:50:28.174Z] [error] Failed to load resource: the server responded with a status of 500 (Internal Server Error)
+[2026-03-22T15:50:28.175Z] [error] Failed to load resource: the server responded with a status of 500 (Internal Server Error)
+[2026-03-22T15:50:28.176Z] [error] Failed to load resource: the server responded with a status of 500 (Internal Server Error)
+[2026-03-22T15:50:28.176Z] [error] Failed to load resource: the server responded with a status of 500 (Internal Server Error)
+[2026-03-22T15:50:28.178Z] [error] Failed to load resource: the server responded with a status of 500 (Internal Server Error)
+[2026-03-22T15:50:28.178Z] [error] Failed to load resource: the server responded with a status of 500 (Internal Server Error)
+[2026-03-22T15:50:28.180Z] [error] Failed to load resource: the server responded with a status of 500 (Internal Server Error)
+[2026-03-22T15:50:28.180Z] [error] Failed to load resource: the server responded with a status of 500 (Internal Server Error)
+[2026-03-22T15:50:28.185Z] [error] Failed to load resource: the server responded with a status of 500 (Internal Server Error)
+[2026-03-22T15:50:28.185Z] [error] Failed to load resource: the server responded with a status of 500 (Internal Server Error)
+[2026-03-22T15:50:28.188Z] [error] Failed to load resource: the server responded with a status of 500 (Internal Server Error)
+[2026-03-22T15:50:28.188Z] [error] Failed to load resource: the server responded with a status of 500 (Internal Server Error)
+[2026-03-22T15:50:28.190Z] [error] Failed to load resource: the server responded with a status of 500 (Internal Server Error)
+[2026-03-22T15:50:28.190Z] [error] Failed to load resource: the server responded with a status of 500 (Internal Server Error)
+[2026-03-22T15:50:28.192Z] [error] Failed to load resource: the server responded with a status of 500 (Internal Server Error)
+[2026-03-22T15:50:28.193Z] [error] Failed to load resource: the server responded with a status of 500 (Internal Server Error)
+[2026-03-22T15:50:28.194Z] [error] Failed to load resource: the server responded with a status of 500 (Internal Server Error)
+[2026-03-22T15:50:28.195Z] [error] Failed to load resource: the server responded with a status of 500 (Internal Server Error)
+[2026-03-22T15:50:28.197Z] [error] Failed to load resource: the server responded with a status of 500 (Internal Server Error)
+[2026-03-22T15:50:28.198Z] [error] Failed to load resource: the server responded with a status of 500 (Internal Server Error)
+[2026-03-22T15:50:28.200Z] [error] Failed to load resource: the server responded with a status of 500 (Internal Server Error)
+[2026-03-22T15:50:28.201Z] [error] Failed to load resource: the server responded with a status of 500 (Internal Server Error)
+[2026-03-22T15:50:28.204Z] [error] Failed to load resource: the server responded with a status of 500 (Internal Server Error)
+[2026-03-22T15:50:28.208Z] [error] Failed to load resource: the server responded with a status of 500 (Internal Server Error)
+[2026-03-22T15:50:28.212Z] [error] Failed to load resource: the server responded with a status of 500 (Internal Server Error)
+[2026-03-22T15:50:28.212Z] [error] Failed to load resource: the server responded with a status of 500 (Internal Server Error)
+[2026-03-22T15:50:31.388Z] [debug] [vite] connecting...
+[2026-03-22T15:50:31.391Z] [debug] [vite] connected.
+[2026-03-22T15:50:31.397Z] [info] %cDownload the React DevTools for a better development experience: https://reactjs.org/link/react-devtools font-weight:bold
+[2026-03-22T15:50:31.429Z] [error] Failed to load resource: the server responded with a status of 500 (Internal Server Error)
+[2026-03-22T15:50:31.430Z] [error] Failed to load resource: the server responded with a status of 500 (Internal Server Error)
+[2026-03-22T15:50:31.430Z] [error] Failed to load resource: the server responded with a status of 500 (Internal Server Error)
+[2026-03-22T15:50:31.430Z] [error] Failed to load resource: the server responded with a status of 500 (Internal Server Error)
+[2026-03-22T15:50:31.431Z] [error] Failed to load resource: the server responded with a status of 500 (Internal Server Error)
+[2026-03-22T15:50:31.432Z] [error] Failed to load resource: the server responded with a status of 500 (Internal Server Error)
+[2026-03-22T15:50:31.433Z] [error] Failed to load resource: the server responded with a status of 500 (Internal Server Error)
+[2026-03-22T15:50:31.434Z] [error] Failed to load resource: the server responded with a status of 500 (Internal Server Error)
+[2026-03-22T15:50:31.435Z] [error] Failed to load resource: the server responded with a status of 500 (Internal Server Error)
+[2026-03-22T15:50:31.439Z] [error] Failed to load resource: the server responded with a status of 500 (Internal Server Error)
+[2026-03-22T15:50:31.440Z] [error] Failed to load resource: the server responded with a status of 500 (Internal Server Error)
+[2026-03-22T15:50:31.442Z] [error] Failed to load resource: the server responded with a status of 500 (Internal Server Error)
+[2026-03-22T15:50:31.442Z] [error] Failed to load resource: the server responded with a status of 500 (Internal Server Error)
+[2026-03-22T15:50:31.443Z] [error] Failed to load resource: the server responded with a status of 500 (Internal Server Error)
+[2026-03-22T15:50:31.443Z] [error] Failed to load resource: the server responded with a status of 500 (Internal Server Error)
+[2026-03-22T15:50:31.444Z] [error] Failed to load resource: the server responded with a status of 500 (Internal Server Error)
+[2026-03-22T15:50:31.444Z] [error] Failed to load resource: the server responded with a status of 500 (Internal Server Error)
+[2026-03-22T15:50:31.447Z] [error] Failed to load resource: the server responded with a status of 500 (Internal Server Error)
+[2026-03-22T15:50:31.447Z] [error] Failed to load resource: the server responded with a status of 500 (Internal Server Error)
+[2026-03-22T15:50:31.449Z] [error] Failed to load resource: the server responded with a status of 500 (Internal Server Error)
+[2026-03-22T15:50:31.449Z] [error] Failed to load resource: the server responded with a status of 500 (Internal Server Error)
+[2026-03-22T15:50:31.450Z] [error] Failed to load resource: the server responded with a status of 500 (Internal Server Error)
+[2026-03-22T15:50:31.451Z] [error] Failed to load resource: the server responded with a status of 500 (Internal Server Error)
+[2026-03-22T15:50:31.452Z] [error] Failed to load resource: the server responded with a status of 500 (Internal Server Error)
+[2026-03-22T15:50:31.452Z] [error] Failed to load resource: the server responded with a status of 500 (Internal Server Error)
+[2026-03-22T15:50:31.454Z] [error] Failed to load resource: the server responded with a status of 500 (Internal Server Error)
+[2026-03-22T15:50:31.454Z] [error] Failed to load resource: the server responded with a status of 500 (Internal Server Error)
+[2026-03-22T15:50:31.455Z] [error] Failed to load resource: the server responded with a status of 500 (Internal Server Error)
+[2026-03-22T15:50:31.458Z] [error] Failed to load resource: the server responded with a status of 500 (Internal Server Error)
+[2026-03-22T15:50:31.458Z] [error] Failed to load resource: the server responded with a status of 500 (Internal Server Error)
+[2026-03-22T15:50:31.459Z] [error] Failed to load resource: the server responded with a status of 500 (Internal Server Error)
+[2026-03-22T15:50:47.890Z] [debug] [vite] connecting...
+[2026-03-22T15:50:47.894Z] [debug] [vite] connected.
+[2026-03-22T15:50:47.896Z] [info] %cDownload the React DevTools for a better development experience: https://reactjs.org/link/react-devtools font-weight:bold
+[2026-03-22T15:50:47.905Z] [error] Failed to load resource: the server responded with a status of 500 (Internal Server Error)
+[2026-03-22T15:50:47.906Z] [error] Failed to load resource: the server responded with a status of 500 (Internal Server Error)
+[2026-03-22T15:50:47.907Z] [error] Failed to load resource: the server responded with a status of 500 (Internal Server Error)
+[2026-03-22T15:50:47.907Z] [error] Failed to load resource: the server responded with a status of 500 (Internal Server Error)
+[2026-03-22T15:50:47.908Z] [error] Failed to load resource: the server responded with a status of 500 (Internal Server Error)
+[2026-03-22T15:50:47.909Z] [error] Failed to load resource: the server responded with a status of 500 (Internal Server Error)
+[2026-03-22T15:50:47.910Z] [error] Failed to load resource: the server responded with a status of 500 (Internal Server Error)
+[2026-03-22T15:50:47.915Z] [error] Failed to load resource: the server responded with a status of 500 (Internal Server Error)
+[2026-03-22T15:50:47.915Z] [error] Failed to load resource: the server responded with a status of 500 (Internal Server Error)
+[2026-03-22T15:50:47.915Z] [error] Failed to load resource: the server responded with a status of 500 (Internal Server Error)
+[2026-03-22T15:50:47.916Z] [error] Failed to load resource: the server responded with a status of 500 (Internal Server Error)
+[2026-03-22T15:50:47.916Z] [error] Failed to load resource: the server responded with a status of 500 (Internal Server Error)
+[2026-03-22T15:50:47.916Z] [error] Failed to load resource: the server responded with a status of 500 (Internal Server Error)
+[2026-03-22T15:50:47.917Z] [error] Failed to load resource: the server responded with a status of 500 (Internal Server Error)
+[2026-03-22T15:50:47.918Z] [error] Failed to load resource: the server responded with a status of 500 (Internal Server Error)
+[2026-03-22T15:50:47.919Z] [error] Failed to load resource: the server responded with a status of 500 (Internal Server Error)
+[2026-03-22T15:50:47.920Z] [error] Failed to load resource: the server responded with a status of 500 (Internal Server Error)
+[2026-03-22T15:50:47.921Z] [error] Failed to load resource: the server responded with a status of 500 (Internal Server Error)
+[2026-03-22T15:50:47.921Z] [error] Failed to load resource: the server responded with a status of 500 (Internal Server Error)
+[2026-03-22T15:50:47.922Z] [error] Failed to load resource: the server responded with a status of 500 (Internal Server Error)
+[2026-03-22T15:50:47.923Z] [error] Failed to load resource: the server responded with a status of 500 (Internal Server Error)
+[2026-03-22T15:50:47.924Z] [error] Failed to load resource: the server responded with a status of 500 (Internal Server Error)
+[2026-03-22T15:50:47.924Z] [error] Failed to load resource: the server responded with a status of 500 (Internal Server Error)
+[2026-03-22T15:50:47.925Z] [error] Failed to load resource: the server responded with a status of 500 (Internal Server Error)
+[2026-03-22T15:50:47.926Z] [error] Failed to load resource: the server responded with a status of 500 (Internal Server Error)
+[2026-03-22T15:50:47.927Z] [error] Failed to load resource: the server responded with a status of 500 (Internal Server Error)
+[2026-03-22T15:50:47.927Z] [error] Failed to load resource: the server responded with a status of 500 (Internal Server Error)
+[2026-03-22T15:50:47.929Z] [error] Failed to load resource: the server responded with a status of 500 (Internal Server Error)
+[2026-03-22T15:50:47.929Z] [error] Failed to load resource: the server responded with a status of 500 (Internal Server Error)
+[2026-03-22T15:50:47.934Z] [error] Failed to load resource: the server responded with a status of 500 (Internal Server Error)
+[2026-03-22T15:50:47.935Z] [error] Failed to load resource: the server responded with a status of 500 (Internal Server Error)
+[2026-03-22T16:03:08.800Z] [log] [vite] server connection lost. Polling for restart...
+[2026-03-22T16:03:09.044Z] [debug] [vite] connecting...
+[2026-03-22T16:03:09.081Z] [debug] [vite] connected.
+[2026-03-22T16:03:09.107Z] [info] %cDownload the React DevTools for a better development experience: https://reactjs.org/link/react-devtools font-weight:bold
+[2026-03-22T16:03:09.184Z] [error] Failed to load resource: the server responded with a status of 500 (Internal Server Error)
+[2026-03-22T16:03:09.187Z] [error] Failed to load resource: the server responded with a status of 500 (Internal Server Error)
+[2026-03-22T16:03:09.187Z] [error] Failed to load resource: the server responded with a status of 500 (Internal Server Error)
+[2026-03-22T16:03:09.187Z] [error] Failed to load resource: the server responded with a status of 500 (Internal Server Error)
+[2026-03-22T16:03:09.190Z] [error] Failed to load resource: the server responded with a status of 500 (Internal Server Error)
+[2026-03-22T16:03:09.190Z] [error] Failed to load resource: the server responded with a status of 500 (Internal Server Error)
+[2026-03-22T16:03:09.192Z] [error] Failed to load resource: the server responded with a status of 500 (Internal Server Error)
+[2026-03-22T16:03:09.193Z] [error] Failed to load resource: the server responded with a status of 500 (Internal Server Error)
+[2026-03-22T16:03:09.194Z] [error] Failed to load resource: the server responded with a status of 500 (Internal Server Error)
+[2026-03-22T16:03:09.197Z] [error] Failed to load resource: the server responded with a status of 500 (Internal Server Error)
+[2026-03-22T16:03:09.198Z] [error] Failed to load resource: the server responded with a status of 500 (Internal Server Error)
+[2026-03-22T16:03:09.201Z] [error] Failed to load resource: the server responded with a status of 500 (Internal Server Error)
+[2026-03-22T16:03:09.201Z] [error] Failed to load resource: the server responded with a status of 500 (Internal Server Error)
+[2026-03-22T16:03:09.202Z] [error] Failed to load resource: the server responded with a status of 500 (Internal Server Error)
+[2026-03-22T16:03:09.203Z] [error] Failed to load resource: the server responded with a status of 500 (Internal Server Error)
+[2026-03-22T16:03:09.205Z] [error] Failed to load resource: the server responded with a status of 500 (Internal Server Error)
+[2026-03-22T16:03:09.205Z] [error] Failed to load resource: the server responded with a status of 500 (Internal Server Error)
+[2026-03-22T16:03:09.206Z] [error] Failed to load resource: the server responded with a status of 500 (Internal Server Error)
+[2026-03-22T16:03:09.206Z] [error] Failed to load resource: the server responded with a status of 500 (Internal Server Error)
+[2026-03-22T16:03:09.210Z] [error] Failed to load resource: the server responded with a status of 500 (Internal Server Error)
+[2026-03-22T16:03:09.210Z] [error] Failed to load resource: the server responded with a status of 500 (Internal Server Error)
+[2026-03-22T16:03:09.212Z] [error] Failed to load resource: the server responded with a status of 500 (Internal Server Error)
+[2026-03-22T16:03:09.212Z] [error] Failed to load resource: the server responded with a status of 500 (Internal Server Error)
+[2026-03-22T16:03:09.214Z] [error] Failed to load resource: the server responded with a status of 500 (Internal Server Error)
+[2026-03-22T16:03:09.214Z] [error] Failed to load resource: the server responded with a status of 500 (Internal Server Error)
+[2026-03-22T16:03:09.215Z] [error] Failed to load resource: the server responded with a status of 500 (Internal Server Error)
+[2026-03-22T16:03:09.216Z] [error] Failed to load resource: the server responded with a status of 500 (Internal Server Error)
+[2026-03-22T16:03:09.217Z] [error] Failed to load resource: the server responded with a status of 500 (Internal Server Error)
+[2026-03-22T16:03:09.218Z] [error] Failed to load resource: the server responded with a status of 500 (Internal Server Error)
+[2026-03-22T16:03:09.240Z] [error] Failed to load resource: the server responded with a status of 500 (Internal Server Error)
+[2026-03-22T16:03:09.240Z] [error] Failed to load resource: the server responded with a status of 500 (Internal Server Error)

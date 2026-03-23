@@ -5,6 +5,7 @@ import { StatusBadge } from '../components/StatusBadge';
 import { DashboardTab } from '../components/DashboardTab';
 import { SessionManagementModal } from '../components/SessionManagementModal';
 import { RecurringManagementModal } from '../components/RecurringManagementModal';
+import { PatientNotesModal } from '../components/PatientNotesModal';
 import {
   getSlots,
   getAllSlots,
@@ -206,6 +207,8 @@ export function AdminDashboard({ psychologist, onLogout }: Props) {
   const [bookingMinHours, setBookingMinHours] = useState(psychologist.booking_min_hours ?? 24);
   const [policyUnit, setPolicyUnit] = useState<'minutes' | 'hours' | 'days'>(psychologist.policy_unit ?? 'hours');
   const [whatsappNumber, setWhatsappNumber] = useState(psychologist.whatsapp_number ?? '');
+  const [notesPatient, setNotesPatient] = useState<{ email: string; name: string } | null>(null);
+  const [isNotesModalOpen, setIsNotesModalOpen] = useState(false);
   const [policiesSuccess, setPoliciesSuccess] = useState('');
   const [policiesError, setPoliciesError] = useState('');
   const [schedule, setSchedule] = useState<WeeklyDaySchedule[]>([]);
@@ -317,6 +320,11 @@ export function AdminDashboard({ psychologist, onLogout }: Props) {
     localStorage.removeItem('psi_token');
     localStorage.removeItem('psi_user');
     onLogout();
+  };
+
+  const handleOpenNotes = (email: string, name: string) => {
+    setNotesPatient({ email, name });
+    setIsNotesModalOpen(true);
   };
 
   const handleToggleBlock = async (slot: SlotWithBooking) => {
@@ -707,6 +715,15 @@ export function AdminDashboard({ psychologist, onLogout }: Props) {
                               {isBooked && (
                                 <div className="flex gap-2 flex-none">
                                   <button
+                                    onClick={() => handleOpenNotes(slot.patient_email!, slot.patient_name!)}
+                                    className="p-1.5 rounded-lg bg-orange-50 text-orange-600 hover:bg-orange-100 transition-colors"
+                                    title="Notas privadas"
+                                  >
+                                    <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                                    </svg>
+                                  </button>
+                                  <button
                                     onClick={() => setManagingSlot(slot)}
                                     className="text-xs font-semibold px-3 py-1.5 rounded-lg bg-slate-100 text-slate-600 hover:bg-slate-200 transition-colors"
                                   >
@@ -1081,6 +1098,15 @@ export function AdminDashboard({ psychologist, onLogout }: Props) {
                                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
                                     </svg>
                                   </button>
+                                  <button
+                                    onClick={() => handleOpenNotes(b.patient_email, b.patient_name)}
+                                    className="mt-2 text-xs font-semibold text-orange-600 hover:text-orange-700 hover:underline flex items-center justify-end gap-1 w-full"
+                                  >
+                                    Notas privadas
+                                    <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                                    </svg>
+                                  </button>
                                 </div>
                               </div>
                             </div>
@@ -1210,11 +1236,17 @@ export function AdminDashboard({ psychologist, onLogout }: Props) {
                             {r.next_appointment && ` · próx: ${formatDate(r.next_appointment)}`}
                           </p>
                         </div>
-                        <button
+                         <button
                           onClick={() => setManagingRecurring(r)}
                           className="text-xs text-[#1a2e4a] hover:text-[#243d61] font-semibold flex-none underline"
                         >
                           Gestionar
+                        </button>
+                        <button
+                          onClick={() => handleOpenNotes(r.patient_email, r.patient_name)}
+                          className="text-xs text-orange-600 hover:text-orange-700 font-semibold flex-none underline ml-2"
+                        >
+                          Notas
                         </button>
                       </div>
                     ))}
@@ -1551,6 +1583,15 @@ export function AdminDashboard({ psychologist, onLogout }: Props) {
             setActionSuccess('Recurrencia actualizada correctamente.');
             setTimeout(() => setActionSuccess(''), 3000);
           }}
+        />
+      )}
+
+      {notesPatient && (
+        <PatientNotesModal
+          isOpen={isNotesModalOpen}
+          onClose={() => setIsNotesModalOpen(false)}
+          patientEmail={notesPatient.email}
+          patientName={notesPatient.name}
         />
       )}
 

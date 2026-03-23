@@ -1,4 +1,4 @@
-import type { Slot, SlotWithBooking, BookingWithSlot, BookingResult, RecurringBooking, WeeklyDaySchedule, Holiday, DashboardData } from './types';
+import type { Slot, SlotWithBooking, BookingWithSlot, BookingResult, RecurringBooking, WeeklyDaySchedule, Holiday, DashboardData, PatientNote } from './types';
 import { getTodayDateString } from './date';
 
 export type ApiResponse<T = void> = {
@@ -210,3 +210,16 @@ export const extendRecurring = () =>
 // ── Dashboard ─────────────────────────────────────────────────────────────────
 
 export const getDashboard = () => request<DashboardData>('/dashboard');
+
+// ── Notes (admin) ─────────────────────────────────────────────────────────────
+
+export const getNotes = (email: string) => request<PatientNote[]>(`/notes/${email}`);
+
+export const createNote = (data: { patient_email: string; contenido: string }) =>
+  request<PatientNote>('/notes', { method: 'POST', body: JSON.stringify(data) });
+
+export const updateNote = (id: number, data: { contenido: string }) =>
+  request(`/notes/${id}`, { method: 'PUT', body: JSON.stringify(data) });
+
+export const deleteNote = (id: number) =>
+  request(`/notes/${id}`, { method: 'DELETE' });

@@ -16,6 +16,7 @@ type SlotBookingRow = {
 
 type BookingRow = {
   id: number;
+  paciente_nombre: string;
   paciente_email: string;
   paciente_telefono: string;
   slot_id: number;
@@ -345,6 +346,15 @@ bookingsRouter.patch('/:id', async (c) => {
   // 4. Atomic swap in D1 batch — preserve original patient data in new booking
   try {
     const results = await c.env.DB.batch([
+      // Audit: record reschedule as a cancellation
+      c.env.DB.prepare(
+        `INSERT INTO cancellations (psicologo_id, slot_id, slot_fecha, slot_hora_inicio,
+          paciente_nombre, paciente_email, paciente_telefono, reason)
+         VALUES (?, ?, ?, ?, ?, ?, ?, 'reschedule')`,
+      ).bind(
+        oldBooking.psicologo_id, oldBooking.slot_id, oldBooking.fecha, oldBooking.hora_inicio,
+        oldBooking.paciente_nombre, oldBooking.paciente_email, oldBooking.paciente_telefono,
+      ),
       // Free old slot
       c.env.DB.prepare('UPDATE slots SET disponible = 1 WHERE id = ?').bind(oldBooking.slot_id),
       // Delete old booking
@@ -356,11 +366,11 @@ bookingsRouter.patch('/:id', async (c) => {
       ).bind(new_slot_id, oldBooking.paciente_nombre, oldBooking.paciente_email, oldBooking.paciente_telefono),
     ]);
 
-    if (results[2].meta.changes === 0) {
+    if (results[3].meta.changes === 0) {
       return c.json({ success: false, error: 'Este turno ya no está disponible, por favor elegí otro' }, 409);
     }
 
-    const newBookingId = results[3].meta.last_row_id;
+    const newBookingId = results[4].meta.last_row_id;
     return c.json({
       success: true,
       data: {
@@ -400,7 +410,7 @@ bookingsRouter.delete('/:id', async (c) => {
   }
 
   const booking = await c.env.DB.prepare(
-    `SELECT b.id, b.paciente_email, b.paciente_telefono, b.slot_id, s.fecha, s.hora_inicio, s.psicologo_id
+    `SELECT b.id, b.paciente_nombre, b.paciente_email, b.paciente_telefono, b.slot_id, s.fecha, s.hora_inicio, s.psicologo_id
      FROM reservas b
      JOIN slots s ON b.slot_id = s.id
      WHERE b.id = ?`,
@@ -441,8 +451,18 @@ bookingsRouter.delete('/:id', async (c) => {
     }
   }
 
-  // Delete booking and restore slot
+  // Audit + delete booking + restore slot (atomic batch)
+  const cancelReason = isPsychologist ? 'admin_cancel' : 'patient_cancel';
   await c.env.DB.batch([
+    c.env.DB.prepare(
+      `INSERT INTO cancellations (psicologo_id, slot_id, slot_fecha, slot_hora_inicio,
+        paciente_nombre, paciente_email, paciente_telefono, reason)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+    ).bind(
+      booking.psicologo_id, booking.slot_id, booking.fecha, booking.hora_inicio,
+      booking.paciente_nombre ?? '', booking.paciente_email, booking.paciente_telefono,
+      cancelReason,
+    ),
     c.env.DB.prepare('DELETE FROM reservas WHERE id = ?').bind(id),
     c.env.DB.prepare('UPDATE slots SET disponible = 1 WHERE id = ?').bind(booking.slot_id),
   ]);

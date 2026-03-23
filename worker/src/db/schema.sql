@@ -64,6 +64,20 @@ CREATE TABLE recurring_bookings (
   FOREIGN KEY (psychologist_id) REFERENCES psicologos(id)
 );
 
+CREATE TABLE cancellations (
+  id               INTEGER PRIMARY KEY AUTOINCREMENT,
+  psicologo_id     INTEGER NOT NULL,
+  slot_id          INTEGER NOT NULL,
+  slot_fecha       TEXT    NOT NULL,
+  slot_hora_inicio TEXT    NOT NULL,
+  paciente_nombre  TEXT    NOT NULL,
+  paciente_email   TEXT    NOT NULL,
+  paciente_telefono TEXT,
+  reason           TEXT    NOT NULL DEFAULT 'patient_cancel',
+  cancelled_at     TEXT    NOT NULL DEFAULT (datetime('now')),
+  FOREIGN KEY (psicologo_id) REFERENCES psicologos(id)
+);
+
 -- Indexes for performance (added to reduce D1 row reads)
 
 -- slots table
@@ -82,3 +96,20 @@ CREATE INDEX IF NOT EXISTS idx_recurring_active ON recurring_bookings(active);
 
 -- weekly_schedule table
 CREATE INDEX IF NOT EXISTS idx_weekly_psychologist_id ON weekly_schedule(psychologist_id);
+
+-- cancellations table
+CREATE INDEX IF NOT EXISTS idx_cancellations_psicologo_fecha
+  ON cancellations(psicologo_id, slot_fecha);
+
+-- Patient notes (private)
+CREATE TABLE paciente_notas (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  psicologo_id INTEGER NOT NULL,
+  paciente_email TEXT NOT NULL,
+  contenido TEXT NOT NULL,
+  created_at TEXT NOT NULL DEFAULT (datetime('now')),
+  updated_at TEXT NOT NULL DEFAULT (datetime('now')),
+  FOREIGN KEY (psicologo_id) REFERENCES psicologos(id)
+);
+
+CREATE INDEX IF NOT EXISTS idx_notas_psicologo_paciente ON paciente_notas(psicologo_id, paciente_email);

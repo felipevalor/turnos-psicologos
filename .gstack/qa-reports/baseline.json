@@ -1,0 +1,22 @@
+{
+  "date": "2026-03-18",
+  "url": "http://localhost:5175",
+  "healthScore": 78,
+  "issues": [
+    {"id": "ISSUE-001", "title": "Reschedule modal defaults to today with no available slots", "severity": "medium", "category": "ux"},
+    {"id": "ISSUE-002", "title": "Time inputs use 12h AM/PM format", "severity": "medium", "category": "ux"},
+    {"id": "ISSUE-003", "title": "Error message leaks backend field names", "severity": "low", "category": "content"},
+    {"id": "ISSUE-004", "title": "Mobile day-view slot cards layout overflow", "severity": "low", "category": "visual"},
+    {"id": "ISSUE-005", "title": "React Router v7 future flag warnings", "severity": "low", "category": "console"}
+  ],
+  "categoryScores": {
+    "console": 70,
+    "links": 100,
+    "visual": 92,
+    "functional": 88,
+    "ux": 76,
+    "performance": 90,
+    "content": 90,
+    "accessibility": 75
+  }
+}
