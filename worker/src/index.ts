@@ -12,10 +12,12 @@ import type { Env, AppVariables } from './types';
 const app = new Hono<{ Bindings: Env; Variables: AppVariables }>();
 
 app.use('*', (c, next) => {
+  const allowedOrigin = c.env.ALLOWED_ORIGIN;
   return cors({
-    origin: c.env.ALLOWED_ORIGIN ?? '*',
+    origin: allowedOrigin ?? '*',
     allowMethods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
     allowHeaders: ['Content-Type', 'Authorization'],
+    credentials: !!allowedOrigin,
     maxAge: 86400,
   })(c, next);
 });

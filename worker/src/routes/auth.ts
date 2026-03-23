@@ -78,8 +78,10 @@ async function clearRateLimit(env: Env, ip: string): Promise<void> {
 }
 
 function buildSessionCookie(token: string, isSecure: boolean): string {
-  const base = `psi_session=${token}; HttpOnly; SameSite=Strict; Path=/; Max-Age=28800`;
-  return isSecure ? `${base}; Secure` : base;
+  if (isSecure) {
+    return `psi_session=${token}; HttpOnly; Secure; SameSite=None; Path=/; Max-Age=28800`;
+  }
+  return `psi_session=${token}; HttpOnly; SameSite=Strict; Path=/; Max-Age=28800`;
 }
 
 export const authRouter = new Hono<{ Bindings: Env; Variables: AppVariables }>();
@@ -265,6 +267,10 @@ authRouter.post('/login', async (c) => {
 
 // POST /api/auth/logout
 authRouter.post('/logout', (c) => {
-  c.header('Set-Cookie', 'psi_session=; HttpOnly; Secure; SameSite=Strict; Path=/; Max-Age=0');
+  const isSecure = new URL(c.req.url).protocol === 'https:';
+  const cookie = isSecure
+    ? 'psi_session=; HttpOnly; Secure; SameSite=None; Path=/; Max-Age=0'
+    : 'psi_session=; HttpOnly; SameSite=Strict; Path=/; Max-Age=0';
+  c.header('Set-Cookie', cookie);
   return c.json({ success: true });
 });
