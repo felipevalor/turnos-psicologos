@@ -618,7 +618,7 @@ export function PatientView() {
                 </p>
                 <div className="flex flex-col gap-2">
                   <p className="text-xs text-slate-400 bg-slate-50 border border-slate-100 rounded-xl p-3 text-center mb-1">
-                    Recordá borrar el evento de tu calendario manualente si lo habías agendado.
+                    Recordá borrar el evento de tu calendario manualmente si lo habías agendado.
                   </p>
                   {psychologistContact?.whatsapp_number && (
                     <a
