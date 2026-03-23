@@ -318,7 +318,7 @@ export function PatientView() {
           <div className="flex items-center">
             <Logo className="h-8 w-auto" />
           </div>
-          <a href="/admin" className="text-white border border-white/40 hover:border-white px-3 py-1.5 rounded-md text-sm font-medium transition-colors">
+          <a href="/admin" className="text-white/40 hover:text-white/70 text-xs transition-colors">
             Soy Psicólogo
           </a>
         </div>
