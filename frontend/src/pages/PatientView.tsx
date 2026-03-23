@@ -138,9 +138,12 @@ export function PatientView() {
 
   useEffect(() => {
     if (initializing) return;
-    setBookingSuccess(null);
     loadSlots();
   }, [loadSlots, initializing]);
+
+  useEffect(() => {
+    setBookingSuccess(null);
+  }, [selectedDate]);
 
   useEffect(() => {
     findFirstAvailableDate(STRIP_DATES, getSlots, (date, hasSlots) => {
@@ -165,6 +168,7 @@ export function PatientView() {
     setSelectedSlot(null);
     setBookingSuccess(result);
     setBookingWarning(warning === 'outside_policy' ? { policyHours: policyHours ?? 24 } : null);
+    showToast('Sesión agendada exitosamente', 'success');
     localStorage.setItem('psi_patient_email', result.patient.email);
     setCancelEmail(result.patient.email);
     loadSlots();
