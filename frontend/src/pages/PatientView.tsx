@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { useNotifications } from '../lib/NotificationContext';
 import { Logo } from '../components/Logo';
+import valorLogo from '../../img/ValorSolutions-blanca.svg';
 import { SlotGrid } from '../components/SlotGrid';
 import { BookingModal } from '../components/BookingModal';
 import { BottomSheet } from '../components/BottomSheet';
@@ -489,6 +490,13 @@ export function PatientView() {
           )}
         </section>
       </main>
+
+      <footer className="bg-[#1a2e4a] mt-8 py-6">
+        <div className="max-w-2xl mx-auto px-4 flex items-center justify-center gap-2">
+          <span className="text-white/40 text-xs">Desarrollado por</span>
+          <img src={valorLogo} alt="Valor Solutions" className="h-5 w-auto opacity-70" />
+        </div>
+      </footer>
 
       {selectedSlot && (
         <BookingModal slot={selectedSlot} onClose={() => setSelectedSlot(null)} onSuccess={handleBookingSuccess} />
