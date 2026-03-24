@@ -122,10 +122,7 @@ export async function sendReminders(env: Env): Promise<void> {
   const kapso = getClient(env);
   if (!kapso) return;
 
-  const todayBA = getLocalISODate(new Date());
-  const nextDay = new Date(todayBA + 'T12:00:00Z');
-  nextDay.setUTCDate(nextDay.getUTCDate() + 1);
-  const tomorrow = nextDay.toISOString().split('T')[0];
+  const tomorrow = getLocalISODate(new Date(Date.now() + 86_400_000));
   const rows = await env.DB.prepare(
     `SELECT b.paciente_nombre, b.paciente_telefono,
             s.fecha, s.hora_inicio,
