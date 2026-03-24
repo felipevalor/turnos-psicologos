@@ -152,16 +152,16 @@ git commit -m "feat(worker): add KAPSO env vars to Env type and cron trigger"
 - Create: `worker/src/lib/__tests__/notifications.test.ts`
 - Create: `worker/src/lib/notifications.ts`
 
-### Step 1-4: Test and implement `getClient` guard
+All imports must be at the top of the test file — ES module `import` statements cannot appear mid-file. Write the complete test file first (all 11 tests), verify it fails, then implement `notifications.ts`, then verify all tests pass.
 
-- [ ] **Step 1: Create test file and write first failing test**
+- [ ] **Step 1: Create the complete test file**
 
-Create `worker/src/lib/__tests__/notifications.test.ts`:
+Create `worker/src/lib/__tests__/notifications.test.ts` with all tests:
 
 ```typescript
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 
-// Mock the Kapso SDK before importing notifications
+// Mock the Kapso SDK — must be before imports that use it
 const mockSendText = vi.fn().mockResolvedValue(undefined);
 vi.mock('@kapso/whatsapp-cloud-api', () => ({
   WhatsAppClient: vi.fn().mockImplementation(() => ({
@@ -169,7 +169,11 @@ vi.mock('@kapso/whatsapp-cloud-api', () => ({
   })),
 }));
 
-import { sendBookingConfirmation } from '../notifications';
+import {
+  sendBookingConfirmation,
+  sendBookingCancellation,
+  sendBookingReschedule,
+} from '../notifications';
 import type { Env } from '../../types';
 
 function makeEnv(overrides?: Partial<Env>): Env {
@@ -192,9 +196,7 @@ const booking = {
 };
 
 describe('sendBookingConfirmation', () => {
-  beforeEach(() => {
-    mockSendText.mockClear();
-  });
+  beforeEach(() => mockSendText.mockClear());
 
   it('sends nothing when KAPSO_API_KEY is missing', async () => {
     await sendBookingConfirmation(makeEnv({ KAPSO_API_KEY: undefined }), booking);
@@ -205,10 +207,102 @@ describe('sendBookingConfirmation', () => {
     await sendBookingConfirmation(makeEnv({ KAPSO_PHONE_NUMBER_ID: undefined }), booking);
     expect(mockSendText).not.toHaveBeenCalled();
   });
+
+  it('sends patient confirmation with correct message', async () => {
+    await sendBookingConfirmation(makeEnv(), booking);
+    expect(mockSendText).toHaveBeenCalledWith({
+      phoneNumberId: '123456',
+      to: '5491112345678',
+      body: '¡Hola Ana García! Tu sesión fue confirmada para el 2026-03-25 a las 10:00 hs. ¡Te esperamos!',
+    });
+  });
+
+  it('sends psychologist confirmation with + stripped from phone', async () => {
+    await sendBookingConfirmation(makeEnv(), booking);
+    expect(mockSendText).toHaveBeenCalledWith({
+      phoneNumberId: '123456',
+      to: '5491187654321',
+      body: 'Nueva sesión agendada: Ana García el 2026-03-25 a las 10:00 hs. Tel: +5491112345678',
+    });
+  });
+
+  it('skips psychologist message when psychologistPhone is null', async () => {
+    await sendBookingConfirmation(makeEnv(), { ...booking, psychologistPhone: null });
+    expect(mockSendText).toHaveBeenCalledTimes(1);
+    expect(mockSendText).toHaveBeenCalledWith(
+      expect.objectContaining({ to: '5491112345678' }),
+    );
+  });
+});
+
+describe('sendBookingCancellation', () => {
+  beforeEach(() => mockSendText.mockClear());
+
+  it('sends patient cancellation message', async () => {
+    await sendBookingCancellation(makeEnv(), booking, 'patient');
+    expect(mockSendText).toHaveBeenCalledWith(
+      expect.objectContaining({
+        to: '5491112345678',
+        body: 'Hola Ana García, tu sesión del 2026-03-25 a las 10:00 hs fue cancelada.',
+      }),
+    );
+  });
+
+  it('sends patient-initiated psychologist message', async () => {
+    await sendBookingCancellation(makeEnv(), booking, 'patient');
+    expect(mockSendText).toHaveBeenCalledWith(
+      expect.objectContaining({
+        to: '5491187654321',
+        body: 'Ana García canceló su sesión del 2026-03-25 a las 10:00 hs.',
+      }),
+    );
+  });
+
+  it('sends admin-initiated psychologist message', async () => {
+    await sendBookingCancellation(makeEnv(), booking, 'admin');
+    expect(mockSendText).toHaveBeenCalledWith(
+      expect.objectContaining({
+        to: '5491187654321',
+        body: 'Cancelaste la sesión de Ana García del 2026-03-25 a las 10:00 hs.',
+      }),
+    );
+  });
+});
+
+describe('sendBookingReschedule', () => {
+  beforeEach(() => mockSendText.mockClear());
+
+  it('sends patient reschedule message', async () => {
+    await sendBookingReschedule(makeEnv(), booking, 'patient');
+    expect(mockSendText).toHaveBeenCalledWith(
+      expect.objectContaining({
+        to: '5491112345678',
+        body: '¡Hola Ana García! Tu sesión fue reprogramada al 2026-03-25 a las 10:00 hs.',
+      }),
+    );
+  });
+
+  it('sends patient-initiated psychologist message', async () => {
+    await sendBookingReschedule(makeEnv(), booking, 'patient');
+    expect(mockSendText).toHaveBeenCalledWith(
+      expect.objectContaining({
+        body: 'Ana García reprogramó su sesión al 2026-03-25 a las 10:00 hs.',
+      }),
+    );
+  });
+
+  it('sends admin-initiated psychologist message', async () => {
+    await sendBookingReschedule(makeEnv(), booking, 'admin');
+    expect(mockSendText).toHaveBeenCalledWith(
+      expect.objectContaining({
+        body: 'Reprogramaste la sesión de Ana García al 2026-03-25 a las 10:00 hs.',
+      }),
+    );
+  });
 });
 ```
 
-- [ ] **Step 2: Run test to verify it fails (module not found)**
+- [ ] **Step 2: Run test to verify all 11 fail (module not found)**
 
 ```bash
 cd worker && npm test
@@ -216,7 +310,7 @@ cd worker && npm test
 
 Expected: FAIL — `Cannot find module '../notifications'`
 
-- [ ] **Step 3: Create notifications.ts with getClient stub**
+- [ ] **Step 3: Create notifications.ts**
 
 Create `worker/src/lib/notifications.ts`:
 
@@ -341,6 +435,8 @@ type ReminderRow = {
   whatsapp_number: string | null;
 };
 
+// sendReminders is not unit-tested because it requires a D1 database mock.
+// It is tested via smoke test in Task 7.
 export async function sendReminders(env: Env): Promise<void> {
   const kapso = getClient(env);
   if (!kapso) return;
@@ -374,151 +470,7 @@ export async function sendReminders(env: Env): Promise<void> {
 }
 ```
 
-- [ ] **Step 4: Run tests to verify getClient guard tests pass**
-
-```bash
-cd worker && npm test
-```
-
-Expected: 2 tests PASS.
-
-### Step 5-8: Test and verify sendBookingConfirmation sends correct messages
-
-- [ ] **Step 5: Add message content tests to the test file**
-
-Append to `worker/src/lib/__tests__/notifications.test.ts`:
-
-```typescript
-  it('sends patient confirmation with correct message', async () => {
-    await sendBookingConfirmation(makeEnv(), booking);
-    expect(mockSendText).toHaveBeenCalledWith({
-      phoneNumberId: '123456',
-      to: '5491112345678',
-      body: '¡Hola Ana García! Tu sesión fue confirmada para el 2026-03-25 a las 10:00 hs. ¡Te esperamos!',
-    });
-  });
-
-  it('sends psychologist confirmation with phone stripped of +', async () => {
-    await sendBookingConfirmation(makeEnv(), booking);
-    expect(mockSendText).toHaveBeenCalledWith({
-      phoneNumberId: '123456',
-      to: '5491187654321',
-      body: 'Nueva sesión agendada: Ana García el 2026-03-25 a las 10:00 hs. Tel: +5491112345678',
-    });
-  });
-
-  it('skips psychologist message when psychologistPhone is null', async () => {
-    await sendBookingConfirmation(makeEnv(), { ...booking, psychologistPhone: null });
-    expect(mockSendText).toHaveBeenCalledTimes(1);
-    expect(mockSendText).toHaveBeenCalledWith(
-      expect.objectContaining({ to: '5491112345678' }),
-    );
-  });
-```
-
-- [ ] **Step 6: Run tests — verify they pass**
-
-```bash
-cd worker && npm test
-```
-
-Expected: 5 tests PASS.
-
-### Step 9-12: Test sendBookingCancellation
-
-- [ ] **Step 7: Add cancellation tests**
-
-Append to the test file:
-
-```typescript
-import { sendBookingCancellation } from '../notifications';
-
-describe('sendBookingCancellation', () => {
-  beforeEach(() => mockSendText.mockClear());
-
-  it('sends patient cancellation message', async () => {
-    await sendBookingCancellation(makeEnv(), booking, 'patient');
-    expect(mockSendText).toHaveBeenCalledWith(
-      expect.objectContaining({
-        to: '5491112345678',
-        body: 'Hola Ana García, tu sesión del 2026-03-25 a las 10:00 hs fue cancelada.',
-      }),
-    );
-  });
-
-  it('sends psychologist message with patient name when patient cancels', async () => {
-    await sendBookingCancellation(makeEnv(), booking, 'patient');
-    expect(mockSendText).toHaveBeenCalledWith(
-      expect.objectContaining({
-        to: '5491187654321',
-        body: 'Ana García canceló su sesión del 2026-03-25 a las 10:00 hs.',
-      }),
-    );
-  });
-
-  it('sends admin-specific psychologist message when admin cancels', async () => {
-    await sendBookingCancellation(makeEnv(), booking, 'admin');
-    expect(mockSendText).toHaveBeenCalledWith(
-      expect.objectContaining({
-        to: '5491187654321',
-        body: 'Cancelaste la sesión de Ana García del 2026-03-25 a las 10:00 hs.',
-      }),
-    );
-  });
-});
-```
-
-- [ ] **Step 8: Run tests — verify they pass**
-
-```bash
-cd worker && npm test
-```
-
-Expected: 8 tests PASS.
-
-### Step 9-10: Test sendBookingReschedule
-
-- [ ] **Step 9: Add reschedule tests**
-
-Append to the test file:
-
-```typescript
-import { sendBookingReschedule } from '../notifications';
-
-describe('sendBookingReschedule', () => {
-  beforeEach(() => mockSendText.mockClear());
-
-  it('sends patient reschedule message', async () => {
-    await sendBookingReschedule(makeEnv(), booking, 'patient');
-    expect(mockSendText).toHaveBeenCalledWith(
-      expect.objectContaining({
-        to: '5491112345678',
-        body: '¡Hola Ana García! Tu sesión fue reprogramada al 2026-03-25 a las 10:00 hs.',
-      }),
-    );
-  });
-
-  it('sends patient-initiated message to psychologist', async () => {
-    await sendBookingReschedule(makeEnv(), booking, 'patient');
-    expect(mockSendText).toHaveBeenCalledWith(
-      expect.objectContaining({
-        body: 'Ana García reprogramó su sesión al 2026-03-25 a las 10:00 hs.',
-      }),
-    );
-  });
-
-  it('sends admin-initiated message to psychologist', async () => {
-    await sendBookingReschedule(makeEnv(), booking, 'admin');
-    expect(mockSendText).toHaveBeenCalledWith(
-      expect.objectContaining({
-        body: 'Reprogramaste la sesión de Ana García al 2026-03-25 a las 10:00 hs.',
-      }),
-    );
-  });
-});
-```
-
-- [ ] **Step 10: Run all tests**
+- [ ] **Step 4: Run all 11 tests — verify they all pass**
 
 ```bash
 cd worker && npm test
@@ -526,15 +478,15 @@ cd worker && npm test
 
 Expected: 11 tests PASS.
 
-- [ ] **Step 11: Verify TypeScript compiles**
+- [ ] **Step 5: Verify TypeScript compiles**
 
 ```bash
 cd worker && npx tsc --noEmit
 ```
 
-Expected: no errors. If `@kapso/whatsapp-cloud-api` types are missing, add `skipLibCheck: true` is already in tsconfig — should be fine.
+Expected: no errors. `skipLibCheck: true` is already in tsconfig so SDK type gaps are handled.
 
-- [ ] **Step 12: Commit**
+- [ ] **Step 6: Commit**
 
 ```bash
 git add worker/src/lib/notifications.ts worker/src/lib/__tests__/notifications.test.ts
@@ -567,12 +519,14 @@ import { sendBookingConfirmation } from '../lib/notifications';
 import type { NotificationBooking } from '../lib/notifications';
 ```
 
-- [ ] **Step 2: Add psychologist fetch helper query inside the POST handler**
+- [ ] **Step 2: Modify the POST handler**
 
-After the D1 batch succeeds and `bookingId` is set, add this block (replace the existing policy fetch block logic):
+**Exact anchor:** find the `const bookingData = { ... }` block (lines ~170–174). The insertion goes immediately after it, replacing the existing `if (!isPsychologist) { const policy = await ...` block that follows. The existing `if (!isPsychologist)` guard must be preserved — only its inner variable name changes from `policy` to `psyRow`.
+
+Replace everything from `if (!isPsychologist) {` (the policy fetch block) through the final `return c.json({ success: true, data: bookingData }, 201);` with:
 
 ```typescript
-// Fetch psychologist fields for notification (and policy check for patient path)
+// Fetch psychologist fields for notification (combined with policy check)
 const psyRow = await c.env.DB.prepare(
   'SELECT nombre, whatsapp_number, booking_min_hours, policy_unit FROM psicologos WHERE id = ?',
 ).bind(slot.psicologo_id).first<PolicyRow>();
@@ -586,12 +540,9 @@ const notifBooking: NotificationBooking = {
   psychologistPhone: psyRow?.whatsapp_number ?? null,
 };
 
+// Fire notification before both return paths — both are 201 success
 c.executionCtx.waitUntil(sendBookingConfirmation(c.env, notifBooking));
-```
 
-Then apply the policy check using `psyRow` (replacing the previous `policy` variable):
-
-```typescript
 if (!isPsychologist) {
   const booking_min_hours = psyRow?.booking_min_hours ?? 24;
   const unit = psyRow?.policy_unit ?? 'hours';
@@ -606,7 +557,10 @@ if (!isPsychologist) {
 return c.json({ success: true, data: bookingData }, 201);
 ```
 
-Note: the `waitUntil` call before both returns ensures the notification fires on the `outside_policy` path too.
+**What changed vs the original:**
+- The `policy` variable is renamed `psyRow` and its query is moved unconditionally above the `if (!isPsychologist)` guard (so admin path also fetches it for the notification)
+- `waitUntil` is added before both `return c.json(...)` calls
+- The `if (!isPsychologist)` guard and its contents are preserved exactly; only the variable name changed
 
 - [ ] **Step 3: Verify TypeScript compiles**
 
@@ -693,9 +647,9 @@ For reschedule, `NotificationBooking.date` and `startTime` must use `newSlot.fec
 import { sendBookingConfirmation, sendBookingCancellation, sendBookingReschedule } from '../lib/notifications';
 ```
 
-- [ ] **Step 2: Add notification call after the D1 batch in PATCH handler**
+- [ ] **Step 2: Add notification call inside the PATCH handler's try block**
 
-After the successful batch (after `const newBookingId = results[4].meta.last_row_id`), before the `return c.json(...)`:
+The PATCH handler wraps the batch in a `try { ... } catch (e) { ... }`. Insert the following **inside the `try` block**, after `const newBookingId = results[4].meta.last_row_id` and before the `return c.json(...)`:
 
 ```typescript
 // Fetch psychologist fields for notification
