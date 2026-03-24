@@ -177,7 +177,7 @@ bookingsRouter.post('/', async (c) => {
   // Fetch psychologist fields for notification (combined with policy check)
   const psyRow = await c.env.DB.prepare(
     'SELECT nombre, whatsapp_number, booking_min_hours, policy_unit FROM psicologos WHERE id = ?',
-  ).bind(slot.psicologo_id).first<PolicyRow>();
+  ).bind(slot.psicologo_id).first<Pick<PolicyRow, 'nombre' | 'whatsapp_number' | 'booking_min_hours' | 'policy_unit'>>();
 
   const notifBooking: NotificationBooking = {
     patientName: patient_name,
