@@ -10,6 +10,7 @@ import { dashboardRouter } from './routes/dashboard';
 import { notesRouter } from './routes/notes';
 import { patientsRouter } from './routes/patients';
 import type { Env, AppVariables } from './types';
+import { sendReminders } from './lib/notifications';
 
 const app = new Hono<{ Bindings: Env; Variables: AppVariables }>();
 
@@ -49,4 +50,9 @@ app.onError((err, c) => {
   return c.json({ success: false, error: 'Error interno del servidor' }, 500);
 });
 
-export default app;
+export default {
+  fetch: app.fetch.bind(app),
+  async scheduled(_event: ScheduledEvent, env: Env, _ctx: ExecutionContext) {
+    await sendReminders(env);
+  },
+};
