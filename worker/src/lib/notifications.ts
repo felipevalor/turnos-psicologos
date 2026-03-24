@@ -2,6 +2,10 @@ import { WhatsAppClient } from '@kapso/whatsapp-cloud-api';
 import type { Env } from '../types';
 import { getLocalISODate } from './date';
 
+// Cloudflare Workers: some third-party SDKs store `fetch` as a variable reference,
+// losing the required `this` binding. Patch it before any SDK instantiation.
+globalThis.fetch = globalThis.fetch.bind(globalThis);
+
 export type NotificationBooking = {
   patientName: string;
   patientPhone: string;
