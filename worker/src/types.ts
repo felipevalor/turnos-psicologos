@@ -3,6 +3,8 @@ export type Env = {
   JWT_SECRET: string;
   ALLOWED_ORIGIN?: string;
   CACHE?: KVNamespace;
+  KAPSO_API_KEY?: string;
+  KAPSO_PHONE_NUMBER_ID?: string;
 };
 
 export type AppVariables = {

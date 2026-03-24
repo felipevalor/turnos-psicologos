@@ -11,3 +11,10 @@ database_id = "6580824b-2b98-464b-8da3-893abbd61026"
 [vars]
 JWT_SECRET = "dev-secret-change-in-production"
 ALLOWED_ORIGIN = "https://turnospsi-frontend.pages.dev"
+
+# WhatsApp notifications via Kapso (local dev only — set real values with `wrangler secret put`)
+# KAPSO_API_KEY = ""
+# KAPSO_PHONE_NUMBER_ID = ""
+
+[triggers]
+crons = ["0 13 * * *"]
