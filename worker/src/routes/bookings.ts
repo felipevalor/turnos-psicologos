@@ -443,14 +443,14 @@ bookingsRouter.delete('/:id', async (c) => {
     }
   }
 
-  if (!isPsychologist) {
-    // Check cancel policy
-    const policy = await c.env.DB.prepare(
-      'SELECT cancel_min_hours, whatsapp_number, nombre, policy_unit FROM psicologos WHERE id = ?',
-    ).bind(booking.psicologo_id).first<Pick<PolicyRow, 'cancel_min_hours' | 'whatsapp_number' | 'nombre' | 'policy_unit'>>();
+  // Fetch psychologist fields once — used for both policy check and notification
+  const psyRow = await c.env.DB.prepare(
+    'SELECT cancel_min_hours, whatsapp_number, nombre, policy_unit FROM psicologos WHERE id = ?',
+  ).bind(booking.psicologo_id).first<Pick<PolicyRow, 'cancel_min_hours' | 'whatsapp_number' | 'nombre' | 'policy_unit'>>();
 
-    const cancel_min_hours = policy?.cancel_min_hours ?? 48;
-    const cancelUnit = policy?.policy_unit ?? 'hours';
+  if (!isPsychologist) {
+    const cancel_min_hours = psyRow?.cancel_min_hours ?? 48;
+    const cancelUnit = psyRow?.policy_unit ?? 'hours';
     const cancelThresholdHours = toHours(cancel_min_hours, cancelUnit);
     const cancelHours = hoursUntilSlot(booking.fecha, booking.hora_inicio);
     if (cancelThresholdHours > 0 && cancelHours < cancelThresholdHours) {
@@ -458,8 +458,8 @@ bookingsRouter.delete('/:id', async (c) => {
         success: false,
         error: 'outside_policy',
         policy_hours: cancel_min_hours,
-        whatsapp_number: policy?.whatsapp_number ?? null,
-        psychologist_name: policy?.nombre ?? '',
+        whatsapp_number: psyRow?.whatsapp_number ?? null,
+        psychologist_name: psyRow?.nombre ?? '',
       }, 403);
     }
   }
@@ -480,17 +480,12 @@ bookingsRouter.delete('/:id', async (c) => {
     c.env.DB.prepare('UPDATE slots SET disponible = 1 WHERE id = ?').bind(booking.slot_id),
   ]);
 
-  // Fetch psychologist fields for notification
-  const psyForNotif = await c.env.DB.prepare(
-    'SELECT nombre, whatsapp_number FROM psicologos WHERE id = ?',
-  ).bind(booking.psicologo_id).first<Pick<PolicyRow, 'nombre' | 'whatsapp_number'>>();
-
   const cancelNotif: NotificationBooking = {
     patientName: booking.paciente_nombre ?? '',
     patientPhone: booking.paciente_telefono,
     date: booking.fecha,
     startTime: booking.hora_inicio,
-    psychologistPhone: psyForNotif?.whatsapp_number ?? null,
+    psychologistPhone: psyRow?.whatsapp_number ?? null,
   };
   c.executionCtx.waitUntil(
     sendBookingCancellation(c.env, cancelNotif, isPsychologist ? 'admin' : 'patient'),
