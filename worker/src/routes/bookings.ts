@@ -318,14 +318,15 @@ bookingsRouter.patch('/:id', async (c) => {
     return c.json({ success: false, error: 'Este turno ya no está disponible, por favor elegí otro' }, 409);
   }
 
+  // Fetch psychologist fields once — used for both policy check and notification
+  const psyRow = await c.env.DB.prepare(
+    'SELECT reschedule_min_hours, whatsapp_number, nombre, policy_unit FROM psicologos WHERE id = ?',
+  ).bind(oldBooking.psicologo_id).first<Pick<PolicyRow, 'reschedule_min_hours' | 'whatsapp_number' | 'nombre' | 'policy_unit'>>();
+
   if (!isPsychologist) {
     // 2b. Check reschedule policy against the ORIGINAL slot's datetime
-    const reschPolicy = await c.env.DB.prepare(
-      'SELECT reschedule_min_hours, whatsapp_number, nombre, policy_unit FROM psicologos WHERE id = ?',
-    ).bind(oldBooking.psicologo_id).first<Pick<PolicyRow, 'reschedule_min_hours' | 'whatsapp_number' | 'nombre' | 'policy_unit'>>();
-
-    const reschedule_min_hours = reschPolicy?.reschedule_min_hours ?? 48;
-    const reschUnit = reschPolicy?.policy_unit ?? 'hours';
+    const reschedule_min_hours = psyRow?.reschedule_min_hours ?? 48;
+    const reschUnit = psyRow?.policy_unit ?? 'hours';
     const reschThresholdHours = toHours(reschedule_min_hours, reschUnit);
     const reschHours = hoursUntilSlot(oldBooking.fecha, oldBooking.hora_inicio);
     if (reschThresholdHours > 0 && reschHours < reschThresholdHours) {
@@ -333,8 +334,8 @@ bookingsRouter.patch('/:id', async (c) => {
         success: false,
         error: 'outside_policy',
         policy_hours: reschedule_min_hours,
-        whatsapp_number: reschPolicy?.whatsapp_number ?? null,
-        psychologist_name: reschPolicy?.nombre ?? '',
+        whatsapp_number: psyRow?.whatsapp_number ?? null,
+        psychologist_name: psyRow?.nombre ?? '',
       }, 403);
     }
   }
@@ -384,10 +385,6 @@ bookingsRouter.patch('/:id', async (c) => {
     }
 
     const newBookingId = results[4].meta.last_row_id;
-
-    const psyRow = await c.env.DB.prepare(
-      'SELECT nombre, whatsapp_number FROM psicologos WHERE id = ?',
-    ).bind(oldBooking.psicologo_id).first<Pick<PolicyRow, 'nombre' | 'whatsapp_number'>>();
 
     const reschedNotif: NotificationBooking = {
       patientName: oldBooking.paciente_nombre,
