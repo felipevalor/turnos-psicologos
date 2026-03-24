@@ -17,4 +17,4 @@ ALLOWED_ORIGIN = "https://turnospsi-frontend.pages.dev"
 # KAPSO_PHONE_NUMBER_ID = ""
 
 [triggers]
-crons = ["0 13 * * *"]
+crons = ["0 13 * * *"]  # 10:00 AM Buenos Aires (UTC-3, no DST)
