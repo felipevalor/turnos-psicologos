@@ -47,7 +47,7 @@ void (async () => {
   const hash = await hashPassword('admin123');
 
   const sql = `-- Seed: test psychologist
-INSERT INTO psychologists (name, email, password_hash)
+INSERT INTO psicologos (nombre, email, password_hash)
 VALUES ('Psicólogo Admin', 'admin@turnospsi.com', '${hash}')
 ON CONFLICT(email) DO NOTHING;
 `;

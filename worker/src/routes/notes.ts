@@ -12,10 +12,12 @@ notesRouter.get('/:email', async (c) => {
   const email = c.req.param('email');
 
   const result = await c.env.DB.prepare(
-    `SELECT id, contenido, created_at, updated_at
-     FROM paciente_notas
-     WHERE psicologo_id = ? AND paciente_email = ?
-     ORDER BY created_at DESC`
+    `SELECT n.id, n.contenido, n.slot_id, n.created_at, n.updated_at,
+            s.fecha as slot_fecha, s.hora_inicio as slot_hora
+     FROM paciente_notas n
+     LEFT JOIN slots s ON s.id = n.slot_id
+     WHERE n.psicologo_id = ? AND n.paciente_email = ?
+     ORDER BY n.created_at DESC`
   )
     .bind(psychologistId, email)
     .all();
@@ -26,20 +28,20 @@ notesRouter.get('/:email', async (c) => {
 // POST /api/notes - Create a new note
 notesRouter.post('/', async (c) => {
   const psychologistId = c.get('psychologistId');
-  const { patient_email, contenido } = await c.req.json();
+  const { patient_email, contenido, slot_id } = await c.req.json();
 
   if (!patient_email || !contenido) {
     return c.json({ success: false, error: 'Email y contenido são requeridos' }, 400);
   }
 
   const result = await c.env.DB.prepare(
-    `INSERT INTO paciente_notas (psicologo_id, paciente_email, contenido)
-     VALUES (?, ?, ?) RETURNING id, created_at, updated_at`
+    `INSERT INTO paciente_notas (psicologo_id, paciente_email, contenido, slot_id)
+     VALUES (?, ?, ?, ?) RETURNING id, created_at, updated_at`
   )
-    .bind(psychologistId, patient_email, contenido)
+    .bind(psychologistId, patient_email, contenido, slot_id || null)
     .first();
 
-  return c.json({ success: true, data: { ...result, contenido, patient_email } });
+  return c.json({ success: true, data: { ...result, contenido, patient_email, slot_id } });
 });
 
 // PUT /api/notes/:id - Update a note

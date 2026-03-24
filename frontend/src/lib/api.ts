@@ -29,7 +29,6 @@ async function request<T>(
     const res = await fetch(`${API_BASE}/api${path}`, {
       ...options,
       headers,
-      credentials: 'include', // send HttpOnly session cookie automatically
     });
     return (await res.json()) as ApiResponse<T>;
   } catch {
@@ -207,6 +206,13 @@ export const rescheduleRecurring = (id: number, data: { email?: string; phone?: 
 export const extendRecurring = () =>
   request<{ slots_created: number; slots_skipped: number }>('/recurring/extend', { method: 'POST' });
 
+// ── Patients (admin) ──────────────────────────────────────────────────────────
+
+export const getPatients = () => request<import('./types').Patient[]>('/patients');
+
+export const getPatientHistory = (email: string) => 
+  request<import('./types').PatientHistory>(`/patients/${email}/history`);
+
 // ── Dashboard ─────────────────────────────────────────────────────────────────
 
 export const getDashboard = () => request<DashboardData>('/dashboard');
@@ -215,7 +221,7 @@ export const getDashboard = () => request<DashboardData>('/dashboard');
 
 export const getNotes = (email: string) => request<PatientNote[]>(`/notes/${email}`);
 
-export const createNote = (data: { patient_email: string; contenido: string }) =>
+export const createNote = (data: { patient_email: string; contenido: string; slot_id?: number | null }) =>
   request<PatientNote>('/notes', { method: 'POST', body: JSON.stringify(data) });
 
 export const updateNote = (id: number, data: { contenido: string }) =>

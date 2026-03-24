@@ -105,9 +105,41 @@ export interface DashboardData {
   };
 }
 
+export interface Patient {
+  email: string;
+  nombre: string;
+  telefono: string;
+  total_sesiones: number;
+  ultima_sesion: string | null;
+  proxima_sesion: string | null;
+}
+
+export interface PatientHistory {
+  bookings: {
+    reserva_id: number;
+    slot_id: number;
+    fecha: string;
+    hora_inicio: string;
+    hora_fin: string;
+    status: 'booked';
+  }[];
+  cancellations: {
+    id: number;
+    fecha: string;
+    hora_inicio: string;
+    reason: string;
+    cancelled_at: string;
+    status: 'cancelled';
+  }[];
+  notes: PatientNote[];
+}
+
 export interface PatientNote {
   id: number;
   contenido: string;
+  slot_id: number | null;
+  slot_fecha: string | null;
+  slot_hora: string | null;
   created_at: string;
   updated_at: string;
 }

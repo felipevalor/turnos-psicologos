@@ -8,6 +8,7 @@ import { scheduleRouter } from './routes/schedule';
 import { holidaysRouter } from './routes/holidays';
 import { dashboardRouter } from './routes/dashboard';
 import { notesRouter } from './routes/notes';
+import { patientsRouter } from './routes/patients';
 import type { Env, AppVariables } from './types';
 
 const app = new Hono<{ Bindings: Env; Variables: AppVariables }>();
@@ -31,6 +32,7 @@ app.route('/api/recurring', recurringRouter);
 app.route('/api/schedule', scheduleRouter);
 app.route('/api/holidays', holidaysRouter);
 app.route('/api/notes', notesRouter);
+app.route('/api/patients', patientsRouter);
 
 // GET /api/contact — public psychologist contact info
 app.get('/api/contact', async (c) => {

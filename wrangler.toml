@@ -8,12 +8,6 @@ binding = "DB"
 database_name = "turnos-psicologos"
 database_id = "6580824b-2b98-464b-8da3-893abbd61026"
 
-[[kv_namespaces]]
-# Run `wrangler kv:namespace create CACHE` to get a real ID
-# Without this namespace the app still works; rate limiting uses in-memory fallback
-# and holiday caching uses the in-memory Map fallback
-binding = "CACHE"
-id = "dabdeb7f16764c45988ef341e77fd37c"
-
 [vars]
 JWT_SECRET = "dev-secret-change-in-production"
+ALLOWED_ORIGIN = "https://turnospsi-frontend.pages.dev"

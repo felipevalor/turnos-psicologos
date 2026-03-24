@@ -28,7 +28,7 @@ import {
 } from '../lib/api';
 import type { Psychologist, SlotWithBooking, BookingWithSlot, RecurringBooking, WeeklyDaySchedule, Holiday } from '../lib/types';
 
-type Tab = 'dashboard' | 'agenda' | 'create' | 'bookings' | 'recurring' | 'settings';
+type Tab = 'dashboard' | 'agenda' | 'create' | 'bookings' | 'recurring' | 'patients' | 'settings';
 
 const DAY_FULL = ['Domingo', 'Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado'];
 
@@ -159,6 +159,15 @@ const TAB_ITEMS: { id: Tab; label: string; icon: React.ReactNode }[] = [
     ),
   },
   {
+    id: 'patients',
+    label: 'Pacientes',
+    icon: (
+      <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z" />
+      </svg>
+    ),
+  },
+  {
     id: 'settings',
     label: 'Configuración',
     icon: (
@@ -171,6 +180,8 @@ const TAB_ITEMS: { id: Tab; label: string; icon: React.ReactNode }[] = [
 ];
 
 import { getTodayDateString } from '../lib/date';
+import { PatientsPage } from './PatientsPage';
+import { PatientDetailPage } from './PatientDetailPage';
 
 export function AdminDashboard({ psychologist, onLogout }: Props) {
   const { showToast } = useNotifications();
@@ -211,6 +222,7 @@ export function AdminDashboard({ psychologist, onLogout }: Props) {
   const [blockModalOpen, setBlockModalOpen] = useState(false);
   const [selectedSlotForBlock, setSelectedSlotForBlock] = useState<SlotWithBooking | null>(null);
   const [assignForm, setAssignForm] = useState({ patient_name: '', patient_email: '', patient_phone: '' });
+  const [selectedPatientEmail, setSelectedPatientEmail] = useState<string | null>(null);
 
   const todayYYYYMM = today.slice(0, 7);
   const [bookingsSearch, setBookingsSearch] = useState('');
@@ -562,6 +574,20 @@ export function AdminDashboard({ psychologist, onLogout }: Props) {
         {/* ── DASHBOARD TAB ──────────────────────────────── */}
         {tab === 'dashboard' && (
           <DashboardTab key={dashboardKey} onNavigateToAgenda={navigateToAgendaView} />
+        )}
+
+        {/* ── PATIENTS TAB ──────────────────────────────── */}
+        {tab === 'patients' && (
+          selectedPatientEmail ? (
+            <PatientDetailPage 
+              email={selectedPatientEmail} 
+              onBack={() => setSelectedPatientEmail(null)} 
+            />
+          ) : (
+            <PatientsPage 
+              onViewDetail={(email) => setSelectedPatientEmail(email)} 
+            />
+          )
         )}
 
         {/* ── AGENDA TAB ─────────────────────────────────── */}
