@@ -16,7 +16,7 @@ turnos-psicologos-1/
 ├── worker/          # Cloudflare Worker (Hono) + TypeScript
 │   └── src/
 │       ├── routes/  # API route handlers
-│       ├── lib/     # jwt.ts, password.ts, etc.
+│       ├── lib/     # jwt.ts, password.ts, notifications.ts, date.ts, etc.
 │       └── db/      # schema.sql
 └── wrangler.toml
 ```
@@ -26,7 +26,8 @@ turnos-psicologos-1/
 - **Backend**: Cloudflare Workers, Hono
 - **Database**: Cloudflare D1 (SQLite)
 - **Auth**: JWT stored in localStorage as `psi_token`
-- **Deployment**: `npx wrangler deploy` from root
+- **Notifications**: WhatsApp via Kapso (`@kapso/whatsapp-cloud-api`) — fire-and-forget via `c.executionCtx.waitUntil()`
+- **Deployment**: `wrangler deploy` from root (requires `nodejs_compat` flag — already set in `wrangler.toml`)
 
 ## Local development
 - Worker: `npx wrangler dev --remote` → localhost:8787
@@ -82,6 +83,15 @@ cancellations: id, psicologo_id, slot_id, slot_fecha, slot_hora_inicio,
 - Buenos Aires (America/Buenos_Aires, UTC-3, no DST)
 - Store all datetimes in UTC internally
 - Convert to America/Buenos_Aires only for display
+
+## WhatsApp notifications (`worker/src/lib/notifications.ts`)
+- Triggered via `c.executionCtx.waitUntil()` in bookings routes — never blocks the HTTP response
+- Four exported functions: `sendBookingConfirmation`, `sendBookingCancellation`, `sendBookingReschedule`, `sendReminders`
+- `sendReminders` runs daily via cron at `0 13 * * *` (13:00 UTC = 10:00 AM Buenos Aires)
+- Env vars `KAPSO_API_KEY` and `KAPSO_PHONE_NUMBER_ID` are optional — if missing, notifications are silently skipped
+- Set production secrets with `wrangler secret put KAPSO_API_KEY` / `wrangler secret put KAPSO_PHONE_NUMBER_ID`
+- Phone numbers stored as `+549XXXXXXXX`; Kapso expects without `+` (stripped internally)
+- `globalThis.fetch = globalThis.fetch.bind(globalThis)` is required at module level — Kapso SDK loses fetch binding in Workers runtime without it
 
 ## Code conventions
 - Strict TypeScript everywhere — no `any`
