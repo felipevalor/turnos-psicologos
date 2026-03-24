@@ -3,7 +3,7 @@ import { authMiddleware } from '../middleware/auth';
 import { verifyJWT } from '../lib/jwt';
 import { getTodayDateString } from '../lib/date';
 import type { Env, AppVariables } from '../types';
-import { sendBookingConfirmation, type NotificationBooking } from '../lib/notifications';
+import { sendBookingConfirmation, sendBookingCancellation, type NotificationBooking } from '../lib/notifications';
 
 type SlotBookingRow = {
   id: number;
@@ -479,6 +479,22 @@ bookingsRouter.delete('/:id', async (c) => {
     c.env.DB.prepare('DELETE FROM reservas WHERE id = ?').bind(id),
     c.env.DB.prepare('UPDATE slots SET disponible = 1 WHERE id = ?').bind(booking.slot_id),
   ]);
+
+  // Fetch psychologist fields for notification
+  const psyForNotif = await c.env.DB.prepare(
+    'SELECT nombre, whatsapp_number FROM psicologos WHERE id = ?',
+  ).bind(booking.psicologo_id).first<Pick<PolicyRow, 'nombre' | 'whatsapp_number'>>();
+
+  const cancelNotif: NotificationBooking = {
+    patientName: booking.paciente_nombre ?? '',
+    patientPhone: booking.paciente_telefono,
+    date: booking.fecha,
+    startTime: booking.hora_inicio,
+    psychologistPhone: psyForNotif?.whatsapp_number ?? null,
+  };
+  c.executionCtx.waitUntil(
+    sendBookingCancellation(c.env, cancelNotif, isPsychologist ? 'admin' : 'patient'),
+  );
 
   return c.json({ success: true });
 });
