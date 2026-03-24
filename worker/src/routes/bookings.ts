@@ -3,7 +3,7 @@ import { authMiddleware } from '../middleware/auth';
 import { verifyJWT } from '../lib/jwt';
 import { getTodayDateString } from '../lib/date';
 import type { Env, AppVariables } from '../types';
-import { sendBookingConfirmation, sendBookingCancellation, type NotificationBooking } from '../lib/notifications';
+import { sendBookingConfirmation, sendBookingCancellation, sendBookingReschedule, type NotificationBooking } from '../lib/notifications';
 
 type SlotBookingRow = {
   id: number;
@@ -384,6 +384,22 @@ bookingsRouter.patch('/:id', async (c) => {
     }
 
     const newBookingId = results[4].meta.last_row_id;
+
+    const psyRow = await c.env.DB.prepare(
+      'SELECT nombre, whatsapp_number FROM psicologos WHERE id = ?',
+    ).bind(oldBooking.psicologo_id).first<Pick<PolicyRow, 'nombre' | 'whatsapp_number'>>();
+
+    const reschedNotif: NotificationBooking = {
+      patientName: oldBooking.paciente_nombre,
+      patientPhone: oldBooking.paciente_telefono,
+      date: newSlot.fecha,
+      startTime: newSlot.hora_inicio,
+      psychologistPhone: psyRow?.whatsapp_number ?? null,
+    };
+    c.executionCtx.waitUntil(
+      sendBookingReschedule(c.env, reschedNotif, isPsychologist ? 'admin' : 'patient'),
+    );
+
     return c.json({
       success: true,
       data: {
