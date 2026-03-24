@@ -3,6 +3,7 @@ import { authMiddleware } from '../middleware/auth';
 import { verifyJWT } from '../lib/jwt';
 import { getTodayDateString } from '../lib/date';
 import type { Env, AppVariables } from '../types';
+import { sendBookingConfirmation, type NotificationBooking } from '../lib/notifications';
 
 type SlotBookingRow = {
   id: number;
@@ -173,18 +174,30 @@ bookingsRouter.post('/', async (c) => {
     patient: { name: patient_name, email: patient_email, phone: patient_phone },
   };
 
-  if (!isPsychologist) {
-    const policy = await c.env.DB.prepare(
-      'SELECT booking_min_hours, whatsapp_number, nombre, policy_unit FROM psicologos WHERE id = ?',
-    ).bind(slot.psicologo_id).first<Pick<PolicyRow, 'booking_min_hours' | 'whatsapp_number' | 'nombre' | 'policy_unit'>>();
+  // Fetch psychologist fields for notification (combined with policy check)
+  const psyRow = await c.env.DB.prepare(
+    'SELECT nombre, whatsapp_number, booking_min_hours, policy_unit FROM psicologos WHERE id = ?',
+  ).bind(slot.psicologo_id).first<PolicyRow>();
 
-    const booking_min_hours = policy?.booking_min_hours ?? 24;
-    const unit = policy?.policy_unit ?? 'hours';
+  const notifBooking: NotificationBooking = {
+    patientName: patient_name,
+    patientPhone: patient_phone,
+    date: slot.fecha,
+    startTime: slot.hora_inicio,
+    psychologistPhone: psyRow?.whatsapp_number ?? null,
+  };
+
+  // Fire notification before both return paths — both are 201 success
+  c.executionCtx.waitUntil(sendBookingConfirmation(c.env, notifBooking));
+
+  if (!isPsychologist) {
+    const booking_min_hours = psyRow?.booking_min_hours ?? 24;
+    const unit = psyRow?.policy_unit ?? 'hours';
     const thresholdHours = toHours(booking_min_hours, unit);
     const slotDatetime = new Date(`${slot.fecha}T${slot.hora_inicio}:00-03:00`);
     const diffHours = (slotDatetime.getTime() - Date.now()) / (1000 * 60 * 60);
     if (thresholdHours > 0 && diffHours < thresholdHours) {
-      return c.json({ success: true, data: bookingData, warning: 'outside_policy', policy_hours: booking_min_hours, psychologist_name: policy?.nombre ?? '' }, 201);
+      return c.json({ success: true, data: bookingData, warning: 'outside_policy', policy_hours: booking_min_hours, psychologist_name: psyRow?.nombre ?? '' }, 201);
     }
   }
 
