@@ -7,7 +7,6 @@ export type NotificationBooking = {
   patientPhone: string;
   date: string;
   startTime: string;
-  psychologistName: string;
   psychologistPhone: string | null;
 };
 
@@ -18,7 +17,6 @@ type KapsoClient = {
 
 function getClient(env: Env): KapsoClient | null {
   if (!env.KAPSO_API_KEY || !env.KAPSO_PHONE_NUMBER_ID) {
-    console.warn('[notifications] KAPSO_API_KEY or KAPSO_PHONE_NUMBER_ID not set — skipping');
     return null;
   }
   return {
@@ -124,7 +122,10 @@ export async function sendReminders(env: Env): Promise<void> {
   const kapso = getClient(env);
   if (!kapso) return;
 
-  const tomorrow = getLocalISODate(new Date(Date.now() + 86_400_000));
+  const todayBA = getLocalISODate(new Date());
+  const nextDay = new Date(todayBA + 'T12:00:00Z');
+  nextDay.setUTCDate(nextDay.getUTCDate() + 1);
+  const tomorrow = nextDay.toISOString().split('T')[0];
   const rows = await env.DB.prepare(
     `SELECT b.paciente_nombre, b.paciente_telefono,
             s.fecha, s.hora_inicio,

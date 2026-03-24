@@ -30,7 +30,6 @@ const booking = {
   patientPhone: '+5491112345678',
   date: '2026-03-25',
   startTime: '10:00',
-  psychologistName: 'Dr. López',
   psychologistPhone: '+5491187654321',
 };
 
@@ -106,6 +105,14 @@ describe('sendBookingCancellation', () => {
       }),
     );
   });
+
+  it('skips psychologist message when psychologistPhone is null', async () => {
+    await sendBookingCancellation(makeEnv(), { ...booking, psychologistPhone: null }, 'patient');
+    expect(mockSendText).toHaveBeenCalledTimes(1);
+    expect(mockSendText).toHaveBeenCalledWith(
+      expect.objectContaining({ to: '5491112345678' }),
+    );
+  });
 });
 
 describe('sendBookingReschedule', () => {
@@ -136,6 +143,14 @@ describe('sendBookingReschedule', () => {
       expect.objectContaining({
         body: 'Reprogramaste la sesión de Ana García al 2026-03-25 a las 10:00 hs.',
       }),
+    );
+  });
+
+  it('skips psychologist message when psychologistPhone is null', async () => {
+    await sendBookingReschedule(makeEnv(), { ...booking, psychologistPhone: null }, 'patient');
+    expect(mockSendText).toHaveBeenCalledTimes(1);
+    expect(mockSendText).toHaveBeenCalledWith(
+      expect.objectContaining({ to: '5491112345678' }),
     );
   });
 });
