@@ -1,6 +1,7 @@
 name = "turnospsi-worker"
 main = "worker/src/index.ts"
 compatibility_date = "2024-01-01"
+compatibility_flags = ["nodejs_compat"]
 account_id = "54b88e512f68875b3707aa3a5bf57197"
 
 [[d1_databases]]
