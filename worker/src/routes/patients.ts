@@ -249,7 +249,9 @@ patientsRouter.get('/export', async (c) => {
       s.fecha AS sesion_fecha,
       s.hora_inicio AS sesion_hora_inicio,
       CASE
-        WHEN s.fecha < date('now', '-3 hours') THEN 'realizada'
+        WHEN s.fecha < date('now', '-3 hours')
+          OR (s.fecha = date('now', '-3 hours') AND s.hora_inicio < time('now', '-3 hours'))
+        THEN 'realizada'
         ELSE 'proxima'
       END AS sesion_estado
     FROM reservas r
