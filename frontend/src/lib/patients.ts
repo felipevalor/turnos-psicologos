@@ -9,8 +9,8 @@ export interface ExportRow {
   email: string;
   telefono: string;
   total_sesiones: number;
-  ultima_sesion: string;
-  proxima_sesion: string;
+  ultima_sesion: string | null;
+  proxima_sesion: string | null;
   sesion_fecha: string;
   sesion_hora_inicio: string;
   sesion_estado: 'realizada' | 'proxima' | 'cancelada' | null;
@@ -108,5 +108,5 @@ export function downloadFile(content: string | Blob, filename: string, mime: str
   a.href = url;
   a.download = filename;
   a.click();
-  URL.revokeObjectURL(url);
+  setTimeout(() => URL.revokeObjectURL(url), 100);
 }
