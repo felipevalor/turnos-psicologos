@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { BottomSheet } from './BottomSheet';
 import { createPatient, updatePatient } from '../lib/api';
 import { useNotifications } from '../lib/NotificationContext';
@@ -20,11 +20,13 @@ export function PatientFormModal({ isOpen, onClose, patient, onSuccess }: Props)
   const [telefono, setTelefono] = useState(patient?.telefono ?? '');
   const [loading, setLoading] = useState(false);
 
-  const resetForm = () => {
-    setNombre(patient?.nombre ?? '');
-    setEmail(patient?.email ?? '');
-    setTelefono(patient?.telefono ?? '');
-  };
+  useEffect(() => {
+    if (isOpen) {
+      setNombre(patient?.nombre ?? '');
+      setEmail(patient?.email ?? '');
+      setTelefono(patient?.telefono ?? '');
+    }
+  }, [isOpen, patient]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -52,7 +54,7 @@ export function PatientFormModal({ isOpen, onClose, patient, onSuccess }: Props)
       onClose={onClose}
       title={isEdit ? 'Editar paciente' : 'Agregar paciente'}
     >
-      <form onSubmit={handleSubmit} onFocus={resetForm} className="space-y-4">
+      <form onSubmit={handleSubmit} className="space-y-4">
         <div>
           <label className="block text-xs font-semibold text-slate-500 mb-1">Nombre completo *</label>
           <input
