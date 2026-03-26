@@ -10,60 +10,96 @@ patientsRouter.use('*', authMiddleware);
 patientsRouter.get('/', async (c) => {
   const psychologistId = c.get('psychologistId');
 
-  // Query to aggregate patients from all relevant tables
   const query = `
-    SELECT 
-      p.email, 
-      p.nombre, 
-      p.telefono,
-      (
-        SELECT COUNT(*) 
-        FROM reservas r 
-        JOIN slots s ON s.id = r.slot_id 
-        WHERE r.paciente_email = p.email 
-          AND s.psicologo_id = ?
-          AND (s.fecha < date('now', '-3 hours') OR (s.fecha = date('now', '-3 hours') AND s.hora_inicio < time('now', '-3 hours')))
-      ) as total_sesiones,
-      (
-        SELECT MAX(s.fecha) 
-        FROM reservas r 
-        JOIN slots s ON s.id = r.slot_id 
-        WHERE r.paciente_email = p.email 
-          AND s.psicologo_id = ?
-          AND (s.fecha < date('now', '-3 hours') OR (s.fecha = date('now', '-3 hours') AND s.hora_inicio < time('now', '-3 hours')))
-      ) as ultima_sesion,
-      (
-        SELECT MIN(s.fecha) 
-        FROM reservas r 
-        JOIN slots s ON s.id = r.slot_id 
-        WHERE r.paciente_email = p.email 
-          AND s.psicologo_id = ?
-          AND (s.fecha > date('now', '-3 hours') OR (s.fecha = date('now', '-3 hours') AND s.hora_inicio >= time('now', '-3 hours')))
-      ) as proxima_sesion
-    FROM (
-      SELECT r.paciente_email as email, r.paciente_nombre as nombre, r.paciente_telefono as telefono 
+    WITH all_patients AS (
+      SELECT nombre, email, telefono, 'manual' AS source
+      FROM patients WHERE psicologo_id = ?
+
+      UNION ALL
+
+      SELECT paciente_nombre, paciente_email, paciente_telefono, 'booking' AS source
       FROM reservas r
       JOIN slots s ON s.id = r.slot_id
       WHERE s.psicologo_id = ?
-      
-      UNION
-      
-      SELECT patient_email, patient_name, patient_phone 
-      FROM recurring_bookings
-      WHERE psychologist_id = ?
-      
-      UNION
-      
-      SELECT paciente_email, paciente_nombre, paciente_telefono 
-      FROM cancellations
-      WHERE psicologo_id = ?
-    ) p
-    GROUP BY p.email
-    ORDER BY p.nombre ASC
+
+      UNION ALL
+
+      SELECT patient_name, patient_email, patient_phone, 'booking' AS source
+      FROM recurring_bookings WHERE psychologist_id = ?
+
+      UNION ALL
+
+      SELECT paciente_nombre, paciente_email, paciente_telefono, 'booking' AS source
+      FROM cancellations WHERE psicologo_id = ?
+    ),
+    deduped AS (
+      SELECT
+        MAX(CASE WHEN source = 'manual' THEN nombre ELSE NULL END)
+          OVER (PARTITION BY email) AS nombre_manual,
+        MAX(CASE WHEN source = 'manual' THEN telefono ELSE NULL END)
+          OVER (PARTITION BY email) AS telefono_manual,
+        nombre,
+        email,
+        telefono,
+        source,
+        ROW_NUMBER() OVER (
+          PARTITION BY email
+          ORDER BY CASE source WHEN 'manual' THEN 0 ELSE 1 END
+        ) AS rn
+      FROM all_patients
+    ),
+    base AS (
+      SELECT
+        COALESCE(nombre_manual, nombre) AS nombre,
+        email,
+        COALESCE(telefono_manual, telefono) AS telefono,
+        source
+      FROM deduped
+      WHERE rn = 1
+    )
+    SELECT
+      b.email,
+      b.nombre,
+      b.telefono,
+      b.source,
+      (
+        SELECT COUNT(*)
+        FROM reservas r
+        JOIN slots s ON s.id = r.slot_id
+        WHERE r.paciente_email = b.email
+          AND s.psicologo_id = ?
+          AND (s.fecha < date('now', '-3 hours') OR (s.fecha = date('now', '-3 hours') AND s.hora_inicio < time('now', '-3 hours')))
+      ) AS total_sesiones,
+      (
+        SELECT MAX(s.fecha)
+        FROM reservas r
+        JOIN slots s ON s.id = r.slot_id
+        WHERE r.paciente_email = b.email
+          AND s.psicologo_id = ?
+          AND (s.fecha < date('now', '-3 hours') OR (s.fecha = date('now', '-3 hours') AND s.hora_inicio < time('now', '-3 hours')))
+      ) AS ultima_sesion,
+      (
+        SELECT MIN(s.fecha)
+        FROM reservas r
+        JOIN slots s ON s.id = r.slot_id
+        WHERE r.paciente_email = b.email
+          AND s.psicologo_id = ?
+          AND (s.fecha > date('now', '-3 hours') OR (s.fecha = date('now', '-3 hours') AND s.hora_inicio >= time('now', '-3 hours')))
+      ) AS proxima_sesion
+    FROM base b
+    ORDER BY b.nombre ASC
   `;
 
   const result = await c.env.DB.prepare(query)
-    .bind(psychologistId, psychologistId, psychologistId, psychologistId, psychologistId, psychologistId)
+    .bind(
+      psychologistId, // patients UNION source
+      psychologistId, // reservas UNION source
+      psychologistId, // recurring_bookings UNION source
+      psychologistId, // cancellations UNION source
+      psychologistId, // total_sesiones subquery
+      psychologistId, // ultima_sesion subquery
+      psychologistId, // proxima_sesion subquery
+    )
     .all();
 
   return c.json({ success: true, data: result.results });
