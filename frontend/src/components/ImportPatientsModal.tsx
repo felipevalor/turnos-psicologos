@@ -133,6 +133,7 @@ export function ImportPatientsModal({ isOpen, onClose, onSuccess }: Props) {
             onDragOver={e => e.preventDefault()}
             onDrop={e => {
               e.preventDefault();
+              if (loading) return;
               const file = e.dataTransfer.files[0];
               if (file) handleFile(file);
             }}
@@ -143,6 +144,7 @@ export function ImportPatientsModal({ isOpen, onClose, onSuccess }: Props) {
               accept=".csv,.xlsx"
               className="hidden"
               onChange={e => {
+                if (loading) return;
                 const file = e.target.files?.[0];
                 if (file) handleFile(file);
               }}
