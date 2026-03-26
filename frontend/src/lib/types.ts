@@ -112,6 +112,7 @@ export interface Patient {
   total_sesiones: number;
   ultima_sesion: string | null;
   proxima_sesion: string | null;
+  source: 'manual' | 'booking';
 }
 
 export interface PatientHistory {
