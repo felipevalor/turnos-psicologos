@@ -37,7 +37,7 @@ turnos-psicologos-1/
 ## Database schema (production — Cloudflare D1)
 These are the EXACT table and column names. Never reference any other names.
 **NOTE: `worker/src/db/schema.sql` is now exactly synchronized with production. Any future schema changes MUST be applied to both `schema.sql` and production D1 simultaneously.**
-**Last migration applied: `migration_cancellations.sql` (2026-03-23) — adds `cancellations` audit table.**
+**Last migration applied: `migration_patients.sql` (2026-03-24)**
 
 ```sql
 -- Main auth table
@@ -67,6 +67,10 @@ cancellations: id, psicologo_id, slot_id, slot_fecha, slot_hora_inicio,
                paciente_nombre, paciente_email, paciente_telefono,
                reason TEXT ('patient_cancel'|'admin_cancel'|'reschedule'),
                cancelled_at TEXT DEFAULT (datetime('now'))
+
+-- Manual patient directory
+patients: id, psicologo_id, nombre, email, telefono DEFAULT '', created_at NOT NULL
+          UNIQUE(psicologo_id, email)
 ```
 
 ### Critical naming rules
@@ -75,6 +79,7 @@ cancellations: id, psicologo_id, slot_id, slot_fecha, slot_hora_inicio,
 - `reservas` has NO `recurring_booking_id`
 - `weekly_schedule`, `holiday_overrides`, `recurring_bookings` use `psychologist_id` (English), which references `psicologos(id)`
 - `cancellations` uses `psicologo_id` (Spanish, like `slots`); `slot_fecha` and `slot_hora_inicio` are denormalized from the slot at cancel time — do NOT join back to `slots` for historical reporting
+- `patients` uses `psicologo_id` (like `slots`); `email` is UNIQUE per psychologist; manually-added patients only
 - `time` and `date` are SQLite reserved words — always quote them: `"time"`, `"date"`
 - Never assume a column exists — check this schema first
 
