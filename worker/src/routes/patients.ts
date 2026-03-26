@@ -124,9 +124,16 @@ patientsRouter.post('/', async (c) => {
     return c.json({ error: 'Ya existe un paciente con ese email' }, 409);
   }
 
-  await c.env.DB.prepare(
-    'INSERT INTO patients (psicologo_id, nombre, email, telefono) VALUES (?, ?, ?, ?)'
-  ).bind(psychologistId, body.nombre.trim(), email, (body.telefono ?? '').trim()).run();
+  try {
+    await c.env.DB.prepare(
+      'INSERT INTO patients (psicologo_id, nombre, email, telefono) VALUES (?, ?, ?, ?)'
+    ).bind(psychologistId, body.nombre.trim(), email, (body.telefono ?? '').trim()).run();
+  } catch (e: unknown) {
+    if (e instanceof Error && e.message.includes('UNIQUE constraint failed')) {
+      return c.json({ error: 'Ya existe un paciente con ese email' }, 409);
+    }
+    throw e;
+  }
 
   return c.json({ success: true }, 201);
 });
@@ -400,7 +407,7 @@ patientsRouter.delete('/:email', async (c) => {
 // GET /api/patients/:email/history - Detailed history for a patient
 patientsRouter.get('/:email/history', async (c) => {
   const psychologistId = c.get('psychologistId');
-  const email = c.req.param('email');
+  const email = decodeURIComponent(c.req.param('email')).toLowerCase();
 
   const [reservas, cancellations, notes] = await Promise.all([
     // past and future bookings
