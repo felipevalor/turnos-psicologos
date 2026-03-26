@@ -115,6 +115,12 @@ export interface Patient {
   source: 'manual' | 'booking';
 }
 
+export interface ConflictRow {
+  incoming: Pick<Patient, 'nombre' | 'email' | 'telefono'>;
+  existing: Pick<Patient, 'nombre' | 'email' | 'telefono'>;
+  existingSource: 'manual' | 'booking';
+}
+
 export interface PatientHistory {
   bookings: {
     reserva_id: number;
