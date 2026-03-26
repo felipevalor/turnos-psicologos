@@ -72,24 +72,26 @@ export function PatientsPage({ onViewDetail }: Props) {
   const handleExport = async (format: 'csv' | 'xlsx') => {
     setExportMenuOpen(false);
     setExportLoading(true);
-    const res = await exportPatients();
-    setExportLoading(false);
-    if (!res.success || !res.data) {
-      showToast('Error al exportar pacientes', 'error');
-      return;
+    try {
+      const res = await exportPatients();
+      if (!res.success || !res.data) {
+        showToast('Error al exportar pacientes', 'error');
+        return;
+      }
+      const rows = res.data as ExportRow[];
+      if (format === 'csv') {
+        downloadFile(buildCSV(rows), 'pacientes.csv', 'text/csv;charset=utf-8;');
+      } else {
+        const { utils, writeFile } = await import('xlsx');
+        const ws = utils.json_to_sheet(rows);
+        const wb = utils.book_new();
+        utils.book_append_sheet(wb, ws, 'Pacientes');
+        writeFile(wb, 'pacientes.xlsx');
+      }
+      showToast('Exportación lista', 'success');
+    } finally {
+      setExportLoading(false);
     }
-    const rows = res.data as ExportRow[];
-    if (format === 'csv') {
-      const csv = buildCSV(rows);
-      downloadFile(csv, 'pacientes.csv', 'text/csv;charset=utf-8;');
-    } else {
-      const { utils, writeFile } = await import('xlsx');
-      const ws = utils.json_to_sheet(rows);
-      const wb = utils.book_new();
-      utils.book_append_sheet(wb, ws, 'Pacientes');
-      writeFile(wb, 'pacientes.xlsx');
-    }
-    showToast('Exportación lista', 'success');
   };
 
   const formatDate = (dateStr: string | null) => {
