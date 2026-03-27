@@ -491,14 +491,14 @@ export function PatientView() {
         </section>
       </main>
 
-      <footer className="bg-[#0d0d0d] mt-8 py-5">
+      <footer className="bg-[#1a2e4a] mt-8 py-6">
         <div className="max-w-2xl mx-auto px-4 flex items-center justify-between">
-          <span className="text-white/30 text-xs">© 2026 Turnos Psico</span>
-          <div className="flex items-center gap-1.5">
-            <span className="text-white/30 text-xs">Diseñado y desarrollado con</span>
-            <span className="text-[#e85d5d] text-xs">♥</span>
-            <span className="text-white/30 text-xs">por</span>
-            <img src={valorLogo} alt="Valor Solutions" className="h-5 w-auto opacity-60" />
+          <span className="text-white/60 text-sm">© 2026 Turnos Psico</span>
+          <div className="flex items-center gap-2">
+            <span className="text-white/60 text-sm">Diseñado y desarrollado con</span>
+            <span className="text-[#e85d5d] text-sm">♥</span>
+            <span className="text-white/60 text-sm">por</span>
+            <img src={valorLogo} alt="Valor Solutions" className="h-6 w-auto opacity-80" />
           </div>
         </div>
       </footer>
