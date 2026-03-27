@@ -524,7 +524,7 @@ export function AdminDashboard({ psychologist, onLogout }: Props) {
       <header className="bg-[#1a2e4a] text-white shadow-md">
         <div className="max-w-6xl mx-auto px-4 py-4 flex items-center justify-between">
           <div className="flex items-center">
-            <Logo className="h-8 w-auto" />
+            <Logo className="h-16 w-auto" />
           </div>
           <button
             onClick={handleLogout}
@@ -1626,7 +1626,7 @@ export function AdminDashboard({ psychologist, onLogout }: Props) {
             <span className="text-white/60 text-sm">Diseñado y desarrollado con</span>
             <span className="text-[#e85d5d] text-sm">♥</span>
             <span className="text-white/60 text-sm">por</span>
-            <img src={valorLogo} alt="Valor Solutions" className="h-6 w-auto opacity-80" />
+            <img src={valorLogo} alt="Valor Solutions" className="h-[7.5rem] w-auto opacity-80" />
           </div>
         </div>
       </footer>
