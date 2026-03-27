@@ -34,7 +34,7 @@ export function PatientFormModal({ isOpen, onClose, patient, onSuccess }: Props)
 
     setLoading(true);
     const res = isEdit
-      ? await updatePatient(patient!.email, { nombre, telefono })
+      ? await updatePatient(patient!.email, { nombre, email: email.trim().toLowerCase(), telefono })
       : await createPatient({ nombre, email, telefono });
     setLoading(false);
 
@@ -74,8 +74,7 @@ export function PatientFormModal({ isOpen, onClose, patient, onSuccess }: Props)
             value={email}
             onChange={e => setEmail(e.target.value)}
             required
-            disabled={isEdit}
-            className="w-full px-3 py-2.5 bg-slate-50 rounded-xl text-sm border-none focus:ring-2 focus:ring-[#1a2e4a]/20 disabled:opacity-50 disabled:cursor-not-allowed"
+            className="w-full px-3 py-2.5 bg-slate-50 rounded-xl text-sm border-none focus:ring-2 focus:ring-[#1a2e4a]/20"
             placeholder="ana@mail.com"
           />
         </div>

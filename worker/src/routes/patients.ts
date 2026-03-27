@@ -325,30 +325,61 @@ patientsRouter.get('/export', async (c) => {
   return c.json({ success: true, data: rows });
 });
 
-// PUT /api/patients/:email - Edit a manual patient's name or phone
+// PUT /api/patients/:email - Edit a patient (cascades email change across all tables)
 patientsRouter.put('/:email', async (c) => {
   const psychologistId = c.get('psychologistId');
-  const email = decodeURIComponent(c.req.param('email')).toLowerCase();
-  const body = await c.req.json<{ nombre?: string; telefono?: string }>();
-
-  if (!body.nombre?.trim() && body.telefono === undefined) {
-    return c.json({ error: 'Debe enviar al menos un campo para actualizar' }, 400);
-  }
+  const oldEmail = decodeURIComponent(c.req.param('email')).toLowerCase();
+  const body = await c.req.json<{ nombre?: string; telefono?: string; email?: string }>();
 
   const nombre = body.nombre?.trim();
   const telefono = (body.telefono ?? '').trim();
+  const newEmail = body.email?.trim().toLowerCase();
 
   if (!nombre) {
-    return c.json({ error: 'Debe enviar al menos un campo para actualizar' }, 400);
+    return c.json({ error: 'El nombre es requerido' }, 400);
   }
 
-  await c.env.DB.prepare(`
-    INSERT INTO patients (psicologo_id, nombre, email, telefono)
-    VALUES (?, ?, ?, ?)
-    ON CONFLICT(psicologo_id, email)
-    DO UPDATE SET nombre = excluded.nombre, telefono = excluded.telefono
-  `).bind(psychologistId, nombre, email, telefono).run();
+  // If email is changing, check new email isn't already taken
+  if (newEmail && newEmail !== oldEmail) {
+    const conflict = await c.env.DB.prepare(`
+      SELECT 1 FROM patients WHERE psicologo_id = ? AND email = ?
+      UNION SELECT 1 FROM reservas r JOIN slots s ON s.id = r.slot_id WHERE s.psicologo_id = ? AND r.paciente_email = ?
+      UNION SELECT 1 FROM recurring_bookings WHERE psychologist_id = ? AND patient_email = ?
+    `).bind(psychologistId, newEmail, psychologistId, newEmail, psychologistId, newEmail).first();
+    if (conflict) {
+      return c.json({ error: 'Ya existe un paciente con ese email' }, 409);
+    }
+  }
 
+  const stmts = [
+    // Upsert patient record with old email first (sets nombre/telefono)
+    c.env.DB.prepare(`
+      INSERT INTO patients (psicologo_id, nombre, email, telefono)
+      VALUES (?, ?, ?, ?)
+      ON CONFLICT(psicologo_id, email)
+      DO UPDATE SET nombre = excluded.nombre, telefono = excluded.telefono
+    `).bind(psychologistId, nombre, oldEmail, telefono),
+  ];
+
+  if (newEmail && newEmail !== oldEmail) {
+    stmts.push(
+      c.env.DB.prepare(
+        'UPDATE patients SET email = ? WHERE psicologo_id = ? AND email = ?'
+      ).bind(newEmail, psychologistId, oldEmail),
+      c.env.DB.prepare(
+        `UPDATE reservas SET paciente_email = ?
+         WHERE paciente_email = ? AND slot_id IN (SELECT id FROM slots WHERE psicologo_id = ?)`
+      ).bind(newEmail, oldEmail, psychologistId),
+      c.env.DB.prepare(
+        'UPDATE cancellations SET paciente_email = ? WHERE psicologo_id = ? AND paciente_email = ?'
+      ).bind(newEmail, psychologistId, oldEmail),
+      c.env.DB.prepare(
+        'UPDATE recurring_bookings SET patient_email = ? WHERE psychologist_id = ? AND patient_email = ?'
+      ).bind(newEmail, psychologistId, oldEmail),
+    );
+  }
+
+  await c.env.DB.batch(stmts);
   return c.json({ success: true });
 });
 

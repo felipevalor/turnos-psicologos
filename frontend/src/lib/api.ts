@@ -216,7 +216,7 @@ export const getPatientHistory = (email: string) =>
 export const createPatient = (data: { nombre: string; email: string; telefono?: string }) =>
   request<void>('/patients', { method: 'POST', body: JSON.stringify(data) });
 
-export const updatePatient = (email: string, data: { nombre?: string; telefono?: string }) =>
+export const updatePatient = (email: string, data: { nombre?: string; email?: string; telefono?: string }) =>
   request<void>(`/patients/${encodeURIComponent(email)}`, {
     method: 'PUT',
     body: JSON.stringify(data),
