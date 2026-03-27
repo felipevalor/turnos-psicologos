@@ -317,7 +317,7 @@ export function PatientView() {
       <header className="bg-[#1a2e4a] text-white sticky top-0 z-30 shadow-lg">
         <div className="max-w-2xl mx-auto px-4 pt-4 pb-2 flex items-center justify-between">
           <div className="flex items-center">
-            <Logo className="h-16 w-auto" />
+            <Logo className="h-10 w-auto" />
           </div>
           <a href="/admin" className="text-white/40 hover:text-white/70 text-xs transition-colors">
             Soy Psicólogo

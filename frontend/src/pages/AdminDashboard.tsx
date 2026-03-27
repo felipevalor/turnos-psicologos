@@ -524,7 +524,7 @@ export function AdminDashboard({ psychologist, onLogout }: Props) {
       <header className="bg-[#1a2e4a] text-white shadow-md">
         <div className="max-w-6xl mx-auto px-4 py-4 flex items-center justify-between">
           <div className="flex items-center">
-            <Logo className="h-16 w-auto" />
+            <Logo className="h-10 w-auto" />
           </div>
           <button
             onClick={handleLogout}
