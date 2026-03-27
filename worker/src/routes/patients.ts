@@ -335,30 +335,19 @@ patientsRouter.put('/:email', async (c) => {
     return c.json({ error: 'Debe enviar al menos un campo para actualizar' }, 400);
   }
 
-  const patient = await c.env.DB.prepare(
-    'SELECT id FROM patients WHERE psicologo_id = ? AND email = ?'
-  ).bind(psychologistId, email).first();
+  const nombre = body.nombre?.trim();
+  const telefono = (body.telefono ?? '').trim();
 
-  if (!patient) {
-    return c.json({ error: 'Paciente no encontrado en el directorio manual' }, 404);
+  if (!nombre) {
+    return c.json({ error: 'Debe enviar al menos un campo para actualizar' }, 400);
   }
 
-  const updates: string[] = [];
-  const values: (string | number)[] = [];
-
-  if (body.nombre?.trim()) {
-    updates.push('nombre = ?');
-    values.push(body.nombre.trim());
-  }
-  if (body.telefono !== undefined) {
-    updates.push('telefono = ?');
-    values.push(body.telefono.trim());
-  }
-
-  values.push(psychologistId, email);
-  await c.env.DB.prepare(
-    `UPDATE patients SET ${updates.join(', ')} WHERE psicologo_id = ? AND email = ?`
-  ).bind(...values).run();
+  await c.env.DB.prepare(`
+    INSERT INTO patients (psicologo_id, nombre, email, telefono)
+    VALUES (?, ?, ?, ?)
+    ON CONFLICT(psicologo_id, email)
+    DO UPDATE SET nombre = excluded.nombre, telefono = excluded.telefono
+  `).bind(psychologistId, nombre, email, telefono).run();
 
   return c.json({ success: true });
 });
@@ -376,7 +365,7 @@ patientsRouter.delete('/:email', async (c) => {
     return c.json({ error: 'Paciente no encontrado en el directorio manual' }, 404);
   }
 
-  const [inReservas, inCancellations, inRecurring] = await Promise.all([
+  const [inReservas, inRecurring] = await Promise.all([
     c.env.DB.prepare(
       `SELECT COUNT(*) AS n FROM reservas r
        JOIN slots s ON s.id = r.slot_id
@@ -384,15 +373,11 @@ patientsRouter.delete('/:email', async (c) => {
     ).bind(psychologistId, email).first<{ n: number }>(),
 
     c.env.DB.prepare(
-      'SELECT COUNT(*) AS n FROM cancellations WHERE psicologo_id = ? AND paciente_email = ?'
-    ).bind(psychologistId, email).first<{ n: number }>(),
-
-    c.env.DB.prepare(
       'SELECT COUNT(*) AS n FROM recurring_bookings WHERE psychologist_id = ? AND patient_email = ?'
     ).bind(psychologistId, email).first<{ n: number }>(),
   ]);
 
-  const total = (inReservas?.n ?? 0) + (inCancellations?.n ?? 0) + (inRecurring?.n ?? 0);
+  const total = (inReservas?.n ?? 0) + (inRecurring?.n ?? 0);
   if (total > 0) {
     return c.json({ error: 'No se puede eliminar un paciente con historial de sesiones' }, 409);
   }
