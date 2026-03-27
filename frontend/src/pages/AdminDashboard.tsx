@@ -27,6 +27,7 @@ import {
   removeHolidayOverride,
 } from '../lib/api';
 import type { Psychologist, SlotWithBooking, BookingWithSlot, RecurringBooking, WeeklyDaySchedule, Holiday } from '../lib/types';
+import valorLogo from '../../img/ValorSolutions-blanca.svg';
 
 type Tab = 'dashboard' | 'agenda' | 'create' | 'bookings' | 'recurring' | 'patients' | 'settings';
 
@@ -521,16 +522,11 @@ export function AdminDashboard({ psychologist, onLogout }: Props) {
       {/* Header */}
       <header className="bg-[#1a2e4a] text-white shadow-md">
         <div className="max-w-6xl mx-auto px-4 py-4 flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <div className="w-9 h-9 rounded-full bg-white/15 flex items-center justify-center">
-              <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
-              </svg>
-            </div>
-            <div>
-              <h1 className="text-base font-bold leading-tight">Turnos Psico</h1>
-              <p className="text-[11px] text-white/60">{psychologist.name}</p>
-            </div>
+          <div className="flex items-center">
+            <svg className="h-8 w-8 mr-2 text-[#4fd1c5]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+            </svg>
+            <h1 className="text-xl font-bold">Turnos <span className="text-[#4fd1c5]">Psico</span></h1>
           </div>
           <button
             onClick={handleLogout}
@@ -1625,6 +1621,17 @@ export function AdminDashboard({ psychologist, onLogout }: Props) {
           </button>
         </div>
       </BottomSheet>
+      <footer className="bg-[#0d0d0d] mt-8 py-5">
+        <div className="max-w-4xl mx-auto px-4 flex items-center justify-between">
+          <span className="text-white/30 text-xs">© 2026 Turnos Psico</span>
+          <div className="flex items-center gap-1.5">
+            <span className="text-white/30 text-xs">Diseñado y desarrollado con</span>
+            <span className="text-[#e85d5d] text-xs">♥</span>
+            <span className="text-white/30 text-xs">por</span>
+            <img src={valorLogo} alt="Valor Solutions" className="h-5 w-auto opacity-60" />
+          </div>
+        </div>
+      </footer>
     </div>
   );
 }
