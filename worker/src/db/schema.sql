@@ -115,3 +115,14 @@ CREATE TABLE paciente_notas (
 
 CREATE INDEX IF NOT EXISTS idx_notas_psicologo_paciente ON paciente_notas(psicologo_id, paciente_email);
 CREATE INDEX IF NOT EXISTS idx_notas_slot_id ON paciente_notas(slot_id);
+
+CREATE TABLE patients (
+  id           INTEGER PRIMARY KEY AUTOINCREMENT,
+  psicologo_id INTEGER NOT NULL,
+  nombre       TEXT NOT NULL,
+  email        TEXT NOT NULL,
+  telefono     TEXT DEFAULT '',
+  created_at   TEXT NOT NULL DEFAULT (datetime('now')),
+  UNIQUE(psicologo_id, email),
+  FOREIGN KEY (psicologo_id) REFERENCES psicologos(id)
+);

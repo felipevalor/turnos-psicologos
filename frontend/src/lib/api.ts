@@ -210,8 +210,35 @@ export const extendRecurring = () =>
 
 export const getPatients = () => request<import('./types').Patient[]>('/patients');
 
-export const getPatientHistory = (email: string) => 
+export const getPatientHistory = (email: string) =>
   request<import('./types').PatientHistory>(`/patients/${email}/history`);
+
+export const createPatient = (data: { nombre: string; email: string; telefono?: string }) =>
+  request<void>('/patients', { method: 'POST', body: JSON.stringify(data) });
+
+export const updatePatient = (email: string, data: { nombre?: string; telefono?: string }) =>
+  request<void>(`/patients/${encodeURIComponent(email)}`, {
+    method: 'PUT',
+    body: JSON.stringify(data),
+  });
+
+export const deletePatient = (email: string) =>
+  request<void>(`/patients/${encodeURIComponent(email)}`, { method: 'DELETE' });
+
+export const previewImport = (rows: Array<{ nombre: string; email: string; telefono: string }>) =>
+  request<{
+    clean: Array<{ nombre: string; email: string; telefono: string }>;
+    conflicts: import('./types').ConflictRow[];
+  }>('/patients/import', { method: 'POST', body: JSON.stringify({ rows }) });
+
+export const confirmImport = (rows: Array<{ nombre: string; email: string; telefono: string }>) =>
+  request<{ imported: number }>('/patients/import/confirm', {
+    method: 'POST',
+    body: JSON.stringify({ rows }),
+  });
+
+export const exportPatients = () =>
+  request<import('./patients').ExportRow[]>('/patients/export');
 
 // ── Dashboard ─────────────────────────────────────────────────────────────────
 

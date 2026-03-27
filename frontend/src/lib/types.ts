@@ -112,6 +112,13 @@ export interface Patient {
   total_sesiones: number;
   ultima_sesion: string | null;
   proxima_sesion: string | null;
+  source: 'manual' | 'booking';
+}
+
+export interface ConflictRow {
+  incoming: Pick<Patient, 'nombre' | 'email' | 'telefono'>;
+  existing: Pick<Patient, 'nombre' | 'email' | 'telefono'>;
+  existingSource: 'manual' | 'booking';
 }
 
 export interface PatientHistory {
