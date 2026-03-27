@@ -28,6 +28,7 @@ import {
 } from '../lib/api';
 import type { Psychologist, SlotWithBooking, BookingWithSlot, RecurringBooking, WeeklyDaySchedule, Holiday } from '../lib/types';
 import valorLogo from '../../img/ValorSolutions-blanca.svg';
+import { Logo } from '../components/Logo';
 
 type Tab = 'dashboard' | 'agenda' | 'create' | 'bookings' | 'recurring' | 'patients' | 'settings';
 
@@ -523,10 +524,7 @@ export function AdminDashboard({ psychologist, onLogout }: Props) {
       <header className="bg-[#1a2e4a] text-white shadow-md">
         <div className="max-w-6xl mx-auto px-4 py-4 flex items-center justify-between">
           <div className="flex items-center">
-            <svg className="h-8 w-8 mr-2 text-[#4fd1c5]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
-            </svg>
-            <h1 className="text-xl font-bold">Turnos <span className="text-[#4fd1c5]">Psico</span></h1>
+            <Logo className="h-8 w-auto" />
           </div>
           <button
             onClick={handleLogout}
